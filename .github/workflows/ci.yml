@@ -10,29 +10,60 @@ permissions:
 
 jobs:
   kernel:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - drupal: '10.3.*'
+          # Advertised composer floor. Drupal 10.3 is past upstream security
+          # support; keep the job isolated and do not treat it as a current
+          # platform claim.
+          - name: d10.3-php8.3-floor
+            drupal: '10.3.*'
             php: '8.3'
             mailer: ''
-          - drupal: '^11'
-            php: '8.4'
+            audit: false
+          - name: d10.6-php8.3
+            drupal: '10.6.*'
+            php: '8.3'
             mailer: ''
-          - drupal: '10.3.*'
+            audit: true
+          - name: d10.6-php8.3-mailer-1.6
+            drupal: '10.6.*'
             php: '8.3'
             mailer: '1.6.2'
-          - drupal: '^11'
+            audit: true
+          - name: d10.6-php8.4-mailer-2.0
+            drupal: '10.6.*'
             php: '8.4'
-            mailer: '1.6.2'
-          - drupal: '10.3.*'
+            mailer: '2.0.2'
+            audit: true
+          - name: d11.3-php8.3
+            drupal: '11.3.*'
             php: '8.3'
+            mailer: ''
+            audit: true
+          - name: d11.3-php8.5-mailer-2.0
+            drupal: '11.3.*'
+            php: '8.5'
             mailer: '2.0.2'
-          - drupal: '^11'
-            php: '8.4'
+            audit: true
+          - name: d11.4-php8.3
+            drupal: '11.4.*'
+            php: '8.3'
+            mailer: ''
+            audit: true
+          - name: d11.4-php8.5-mailer-1.6
+            drupal: '11.4.*'
+            php: '8.5'
+            mailer: '1.6.2'
+            audit: true
+          - name: d11.4-php8.5-mailer-2.0
+            drupal: '11.4.*'
+            php: '8.5'
             mailer: '2.0.2'
+            audit: true
     services:
       postgres:
         image: postgres:16
@@ -60,11 +91,13 @@ jobs:
         env:
           DRUPAL_CONSTRAINT: ${{ matrix.drupal }}
           MAILER_CONSTRAINT: ${{ matrix.mailer }}
+          AUDIT_BLOCK_INSECURE: ${{ matrix.audit }}
         run: |
           mkdir -p /tmp/postmark-ci
           python3 - <<'PY'
           import json, os
           core = os.environ['DRUPAL_CONSTRAINT']
+          audit_block = os.environ.get('AUDIT_BLOCK_INSECURE', 'true').lower() in ('1', 'true', 'yes')
           manifest = {
             'name': 'test/postmark-compatibility',
             'repositories': [{'type': 'composer', 'url': 'https://packages.drupal.org/8'}],
@@ -83,9 +116,6 @@ jobs:
                 'phpstan/extension-installer': True,
                 'dealerdirect/phpcodesniffer-composer-installer': True,
               },
-              # Test the declared old minor without deploying it. This setting
-              # applies only to this disposable compatibility fixture.
-              'audit': {'block-insecure': False},
             },
             'extra': {
               'installer-paths': {
@@ -95,6 +125,10 @@ jobs:
               'drupal-scaffold': {'locations': {'web-root': 'web/'}},
             },
           }
+          if not audit_block:
+            # Isolated Drupal 10.3 floor job only. Supported-branch jobs keep
+            # Composer's default insecure-package block.
+            manifest['config']['audit'] = {'block-insecure': False}
           if os.environ.get('MAILER_CONSTRAINT'):
             manifest['require']['drupal/symfony_mailer'] = os.environ['MAILER_CONSTRAINT']
           with open('/tmp/postmark-ci/composer.json', 'w') as f:
@@ -103,6 +137,38 @@ jobs:
           composer install --working-dir=/tmp/postmark-ci --no-interaction --no-progress
           mkdir -p /tmp/postmark-ci/web/modules/contrib
           ln -s "$GITHUB_WORKSPACE" /tmp/postmark-ci/web/modules/contrib/postmark_webhooks
+      - name: Record resolved versions
+        working-directory: /tmp/postmark-ci
+        env:
+          MAILER_CONSTRAINT: ${{ matrix.mailer }}
+        run: |
+          package_version() {
+            composer show --no-ansi "$1" | awk '/^versions/{print $NF; exit}'
+          }
+          {
+            echo "### ${{ matrix.name }}"
+            echo "- PHP: \`$(php -r 'echo PHP_VERSION;')\`"
+            echo "- Drupal constraint: \`${{ matrix.drupal }}\`"
+            echo "- Drupal core: \`$(package_version drupal/core)\`"
+            echo "- drush: \`$(package_version drush/drush)\`"
+            if [ -n "$MAILER_CONSTRAINT" ]; then
+              echo "- Mailer Plus constraint: \`$MAILER_CONSTRAINT\`"
+              echo "- Mailer Plus: \`$(package_version drupal/symfony_mailer)\`"
+            else
+              echo "- Mailer Plus: not installed"
+            fi
+            echo "- Composer audit block-insecure: \`${{ matrix.audit }}\`"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          composer show --no-ansi drupal/core
+          composer show --no-ansi drupal/core-recommended
+          composer show --no-ansi drush/drush
+          if [ -n "$MAILER_CONSTRAINT" ]; then
+            composer show --no-ansi drupal/symfony_mailer
+          fi
+      - name: Composer security audit
+        if: matrix.audit
+        working-directory: /tmp/postmark-ci
+        run: composer audit --no-interaction --abandoned=report
       - name: Coding standards
         run: /tmp/postmark-ci/vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install "$GITHUB_WORKSPACE"
       - name: Start disposable HTTP server
