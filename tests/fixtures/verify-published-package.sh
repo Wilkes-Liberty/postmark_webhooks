@@ -49,13 +49,25 @@ mkdir -p "$ROOT/web/sites/simpletest/browser_output"
   echo $! > /tmp/postmark-published-http.pid
 )
 server_pid="$(cat /tmp/postmark-published-http.pid)"
-trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+trap 'pkill -TERM -P "$server_pid" 2>/dev/null || true; kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
+ready=false
 for attempt in $(seq 1 20); do
+  if ! kill -0 "$server_pid" 2>/dev/null; then
+    cat /tmp/postmark-published-http.log >&2
+    echo "Published-package HTTP server exited before it was ready." >&2
+    exit 1
+  fi
   if curl --silent --output /dev/null http://127.0.0.1:8888/robots.txt; then
+    ready=true
     break
   fi
   sleep 1
 done
+if [[ "$ready" != true ]]; then
+  cat /tmp/postmark-published-http.log >&2
+  echo "Published-package HTTP server did not become ready." >&2
+  exit 1
+fi
 
 (
   cd "$ROOT"
@@ -89,17 +101,16 @@ if [[ -L "$UPGRADE_MODULE" ]]; then
   echo "Refusing a git symlink on the upgrade fixture." >&2
   exit 1
 fi
-UPGRADE_SHA1="$(python3 - <<PY
+UPGRADE_META="$(python3 - <<PY
 import json
 lock = json.load(open("$UPGRADE_ROOT/composer.lock"))
 for pkg in lock.get("packages", []):
     if pkg.get("name") == "drupal/postmark_webhooks":
-        print(pkg.get("dist", {}).get("shasum", ""))
-        print(pkg.get("version", ""))
+        print(pkg.get("dist", {}).get("shasum", "") + " " + pkg.get("version", ""))
         break
 PY
 )"
-echo "Upgrade fixture resolved:" $UPGRADE_SHA1
+printf 'Upgrade fixture resolved: %s\n' "$UPGRADE_META"
 mkdir -p "$UPGRADE_ROOT/web/sites/simpletest/browser_output"
 (
   cd "$UPGRADE_ROOT"
