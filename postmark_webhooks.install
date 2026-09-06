@@ -5,6 +5,7 @@
  * Install and schema hooks for the Postmark Webhooks module.
  */
 
+use Drupal\postmark_webhooks\Suppression\SuppressionStore;
 use Drupal\Core\Database\SchemaObjectExistsException;
 
 /**
@@ -14,6 +15,34 @@ function postmark_webhooks_schema() {
   $schema['postmark_events'] = [
     'description' => 'Log of Postmark bounce, spam, and delivery webhook events.',
     'fields' => [
+      'occurred' => [
+        'type' => 'int',
+        'size' => 'big',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Provider occurrence time; legacy rows use receipt time.',
+      ],
+      'time_basis' => [
+        'type' => 'varchar',
+        'length' => 8,
+        'not null' => TRUE,
+        'default' => 'legacy',
+        'description' => 'provider, receipt, clamped, or legacy.',
+      ],
+      'server_id' => [
+        'type' => 'varchar',
+        'length' => 20,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Provider server identifier when supplied.',
+      ],
+      'message_stream' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Provider message stream when supplied.',
+      ],
       'event_key' => [
         'type' => 'varchar',
         'length' => 64,
@@ -83,6 +112,21 @@ function postmark_webhooks_schema() {
       'message_id' => ['message_id'],
     ],
   ];
+  $schema['postmark_suppression'] = [
+    'description' => 'Minimal suppression evidence, independent of event retention.',
+    'fields' => [
+      'state_key' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+      'recipient' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE],
+      'server_id' => ['type' => 'varchar', 'length' => 20, 'not null' => TRUE, 'default' => ''],
+      'message_stream' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+      'reason' => ['type' => 'varchar', 'length' => 80, 'not null' => TRUE],
+      'occurred' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+      'time_basis' => ['type' => 'varchar', 'length' => 8, 'not null' => TRUE],
+      'evidence' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+    ],
+    'primary key' => ['state_key'],
+    'indexes' => ['recipient' => ['recipient']],
+  ];
   return $schema;
 }
 
@@ -106,4 +150,87 @@ function postmark_webhooks_update_10001(): void {
   catch (SchemaObjectExistsException $exception) {
     // The driver checks its own unique-key representation on resumed updates.
   }
+}
+
+/**
+ * Migrates retained alpha evidence into durable state in bounded batches.
+ */
+function postmark_webhooks_update_10002(array &$sandbox): void {
+  $database = \Drupal::database();
+  $schema = $database->schema();
+  // Keep this migration independent of future hook_schema() changes.
+  $definition = [
+    'postmark_events' => [
+      'fields' => [
+        'occurred' => [
+          'type' => 'int',
+          'size' => 'big',
+          'not null' => TRUE,
+          'default' => 0,
+          'description' => 'Provider occurrence time; legacy rows use receipt time.',
+        ],
+        'time_basis' => [
+          'type' => 'varchar',
+          'length' => 8,
+          'not null' => TRUE,
+          'default' => 'legacy',
+          'description' => 'provider, receipt, clamped, or legacy.',
+        ],
+        'server_id' => [
+          'type' => 'varchar',
+          'length' => 20,
+          'not null' => TRUE,
+          'default' => '',
+          'description' => 'Provider server identifier when supplied.',
+        ],
+        'message_stream' => [
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+          'default' => '',
+          'description' => 'Provider message stream when supplied.',
+        ],
+      ],
+    ],
+    'postmark_suppression' => [
+      'description' => 'Minimal suppression evidence, independent of event retention.',
+      'fields' => [
+        'state_key' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+        'recipient' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE],
+        'server_id' => ['type' => 'varchar', 'length' => 20, 'not null' => TRUE, 'default' => ''],
+        'message_stream' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+        'reason' => ['type' => 'varchar', 'length' => 80, 'not null' => TRUE],
+        'occurred' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+        'time_basis' => ['type' => 'varchar', 'length' => 8, 'not null' => TRUE],
+        'evidence' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+      ],
+      'primary key' => ['state_key'],
+      'indexes' => ['recipient' => ['recipient']],
+    ],
+  ];
+  if (!isset($sandbox['last_eid'])) {
+    foreach (['occurred', 'time_basis', 'server_id', 'message_stream'] as $field) {
+      if (!$schema->fieldExists('postmark_events', $field)) {
+        $schema->addField('postmark_events', $field, $definition['postmark_events']['fields'][$field]);
+      }
+    }
+    if (!$schema->tableExists('postmark_suppression')) {
+      $schema->createTable('postmark_suppression', $definition['postmark_suppression']);
+    }
+    $sandbox['last_eid'] = 0;
+    $maximum = $database->select('postmark_events');
+    $maximum->addExpression('MAX(eid)');
+    $sandbox['max_eid'] = (int) $maximum->execute()->fetchField();
+  }
+  $query = $database->select('postmark_events', 'pe')->fields('pe')
+    ->condition('eid', $sandbox['last_eid'], '>')
+    ->condition('eid', $sandbox['max_eid'], '<=')->orderBy('eid')->range(0, 250);
+  $events = $query->execute()->fetchAll();
+  $store = new SuppressionStore($database);
+  foreach ($events as $event) {
+    $store->record((array) $event);
+    $sandbox['last_eid'] = (int) $event->eid;
+  }
+  $sandbox['#finished'] = count($events) < 250 || $sandbox['last_eid'] >= $sandbox['max_eid']
+    ? 1 : $sandbox['last_eid'] / $sandbox['max_eid'];
 }

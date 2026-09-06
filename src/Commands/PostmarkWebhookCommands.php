@@ -46,7 +46,7 @@ class PostmarkWebhookCommands extends DrushCommands {
 
     // Show recent events regardless of suppression state.
     $rows = $this->database->select('postmark_events', 'pe')
-      ->fields('pe', ['eid', 'created', 'event_type', 'bounce_type', 'description'])
+      ->fields('pe', ['eid', 'created', 'occurred', 'time_basis', 'event_type', 'bounce_type', 'description'])
       ->where('LOWER(recipient) = LOWER(:email)', [':email' => $email])
       ->orderBy('created', 'DESC')
       ->range(0, 10)
@@ -62,12 +62,14 @@ class PostmarkWebhookCommands extends DrushCommands {
     foreach ($rows as $row) {
       $table[] = [
         date('Y-m-d H:i', $row->created),
+        date('Y-m-d H:i', $row->time_basis === 'legacy' ? $row->created : $row->occurred),
+        $row->time_basis,
         $row->event_type,
         $row->bounce_type ?: '—',
         mb_substr($row->description, 0, 60),
       ];
     }
-    $this->io()->table(['Date', 'Type', 'Bounce Type', 'Description'], $table);
+    $this->io()->table(['Received', 'Occurred', 'Time basis', 'Type', 'Bounce Type', 'Description'], $table);
   }
 
 }

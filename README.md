@@ -54,16 +54,17 @@ Suppression is enabled by default and runs through `hook_mail_alter()`.
 
 | Event or bounce type | Behavior |
 | --- | --- |
-| Bounce: HardBounce, BadEmailAddress, ManuallyDeactivated, Unsubscribe | Suppress while the event remains stored, without a time window |
+| Bounce: HardBounce, BadEmailAddress, ManuallyDeactivated, Unsubscribe | Suppress permanently using durable evidence |
 | SpamComplaint, SpamNotification | Suppress without a time window by default; optionally limit with `complaint_suppression_days` |
 | Bounce: Transient, SoftBounce, DnsError, MailboxFull, MessageTooLarge | Suppress for `bounce_suppression_days`, default 30; 0 disables soft-bounce suppression |
 | Delivery, Open, Click, Subscribe, unknown events | Log only; do not clear previous suppression |
 
-`complaint_suppression_days: 0` means no time limit. **Retention still applies:**
-cron deletes events older than `event_retention_days` (default 90), including
-hard bounces and complaints. Once a row is purged, it cannot suppress mail.
-Set retention to 0 if suppression history must be kept indefinitely, or choose
-a retention period consistent with your suppression policy.
+`complaint_suppression_days: 0` means permanent suppression. Cron retention
+applies only to event history. Minimal per-recipient, source and reason evidence
+lives in `postmark_suppression` and survives event deletion. The latest occurrence
+for each reason is retained, so an old event cannot reset a temporary window.
+Changing window settings re-evaluates this evidence; disabling suppression does
+not delete it. Delivery and other log-only events never clear a block.
 
 Recipient matching is case-insensitive, including historical mixed-case rows.
 Incoming recipients are normalized to lowercase. A suppressed message has its
@@ -105,6 +106,12 @@ soft-bounce windows 0–365 days, complaint windows and retention 0–3650 days.
 
 ## Development
 
+Use GitHub pull requests in `Wilkes-Liberty/postmark_webhooks` for development,
+CI, review, and merges. Mirror merged commits and authorized release tags
+additively to Drupalcode. Drupal.org remains the canonical issue tracker; keep
+issue numbers in branches, commits, and PR titles. Drupalcode issue forks can
+provide public patch references, but are not a separate merge workflow.
+
 From a Drupal checkout with this module installed and development dependencies:
 
 ```sh
@@ -145,3 +152,37 @@ rows, including duplicates, with a NULL identity key because alpha1 did not reta
 the identifiers needed to reconstruct reliable identities. A replay of a legacy
 event can therefore add one new keyed row. Events previously discarded by
 message-only deduplication cannot be recovered from the local database.
+
+
+## Suppression service and occurrence time
+
+Inject `postmark_webhooks.suppression_policy` (or the interface alias
+`Drupal\postmark_webhooks\Suppression\SuppressionPolicyInterface`) and call
+`decide($recipient)` before transport. The immutable result exposes `suppressed`,
+`reason`, `expires`, `evidence`, `occurred`, and `timeBasis`; it is JSON serializable
+and contains no recipient or secret. NULL expiry on a suppressed result means
+permanent. Disabled mode returns an unsuppressed `disabled` result. Presentation
+belongs to the caller. Core mail and the legacy helper use this same policy.
+
+```php
+$decision = $policy->decide('recipient@example.com');
+if ($decision->suppressed) {
+  // Stop before passing the message to a mail transport.
+}
+```
+
+Occurrence and receipt times are stored separately. Bounce and complaint events
+use `BouncedAt`, delivery uses `DeliveredAt`, and subscription changes use
+`ChangedAt`. Other events can supply `ReceivedAt`. Missing timestamps use receipt
+time; migrated alpha rows use legacy receipt time. RFC 3339 timestamps with up to
+nine fractional digits are accepted. Invalid dates and timestamps more than five
+minutes ahead are rejected; smaller future skew is clamped to the same receipt time stored in `created`
+and explicitly reported with the `clamped` time basis.
+Older events cannot replace newer state. Equal times use the identity digest as
+a deterministic tie breaker. Policy results identify the time basis used.
+
+Run database updates after upgrading. Durable-state migration processes retained
+history in batches of 250 and normalizes legacy recipients. It cannot reconstruct
+events already discarded or purged by alpha1. Event insertion and suppression
+updates commit together. Source fields are preserved for future policy mapping;
+this version still evaluates all source evidence site-wide.

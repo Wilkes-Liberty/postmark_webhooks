@@ -11,7 +11,9 @@ use Drupal\Core\Config\ConfigImporterEvent;
 use Drupal\Core\Config\MemoryStorage;
 use Drupal\Core\Config\StorageComparer;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
+use Drupal\Core\Database\DatabaseExceptionWrapper;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\postmark_webhooks\Controller\PostmarkWebhookController;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,7 +43,7 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
    */
   protected function setUp(): void {
     parent::setUp();
-    $this->installSchema('postmark_webhooks', ['postmark_events']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
     $this->installConfig(['postmark_webhooks']);
   }
 
@@ -253,18 +255,32 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
    * Independent concurrent receivers commit one event and acknowledge both.
    */
   public function testConcurrentRetries(): void {
+    $this->runConcurrentReceivers([123, 123]);
+  }
+
+  /**
+   * Different events racing to create one suppression record keep both events.
+   */
+  public function testConcurrentSuppressionUpdates(): void {
+    $this->runConcurrentReceivers([123, 124]);
+  }
+
+  /**
+   * Runs two receiver processes against the test's committed schema.
+   */
+  private function runConcurrentReceivers(array $ids): void {
     $workers = [];
-    $input = json_encode([
+    $input = [
       'root' => DRUPAL_ROOT,
       'database' => $this->container->get('database')->getConnectionOptions(),
-    ]);
+    ];
     $script = dirname(__DIR__, 2) . '/fixtures/concurrent-receiver.php';
     try {
       for ($i = 0; $i < 2; $i++) {
         $process = proc_open([PHP_BINARY, $script], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         $this->assertIsResource($process);
         $workers[] = [$process, $pipes];
-        fwrite($pipes[0], $input . "\n");
+        fwrite($pipes[0], json_encode($input + ['event_id' => $ids[$i]]) . "\n");
       }
       foreach ($workers as [, $pipes]) {
         stream_set_timeout($pipes[1], 20);
@@ -280,7 +296,8 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
         fclose($pipes[2]);
         $this->assertSame(0, proc_close($process));
       }
-      $this->assertSame(1, $this->eventCount());
+      $this->assertSame(count(array_unique($ids)), $this->eventCount());
+      $this->assertSame(1, (int) $this->container->get('database')->select('postmark_suppression')->countQuery()->execute()->fetchField());
     }
     finally {
       foreach ($workers as [$process, $pipes]) {
@@ -371,6 +388,78 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
     $dispatcher = new EventDispatcher();
     $dispatcher->addSubscriber($this->container->get('postmark_webhooks.config_import_validator'));
     $dispatcher->dispatch(new ConfigImporterEvent($importer), ConfigEvents::IMPORT_VALIDATE);
+  }
+
+  /**
+   * Delayed events use occurrence time without resetting windows.
+   */
+  public function testProviderOccurrencePolicy(): void {
+    $this->setSecret(self::SECRET);
+    $now = \Drupal::time()->getCurrentTime();
+    $time = $this->createMock(TimeInterface::class);
+    $time->method('getRequestTime')->willReturn($now);
+    $time->method('getCurrentTime')->willReturn($now);
+    $this->container->set('datetime.time', $time);
+    $base = ['RecordType' => 'Bounce', 'Type' => 'SoftBounce', 'Email' => 'timed@example.com'];
+    $send = function (int $id, string $date) use ($base): int {
+      return $this->receive($this->request(self::SECRET, json_encode($base + ['ID' => $id, 'BouncedAt' => $date])))->getStatusCode();
+    };
+    $policy = $this->container->get('postmark_webhooks.suppression_policy');
+    $this->assertSame(200, $send(1, gmdate('c', $now - 60 * 86400)));
+    $this->assertFalse($policy->decide('timed@example.com')->suppressed);
+    $this->assertSame(200, $send(2, gmdate('c', $now - 86400)));
+    $new = $policy->decide('timed@example.com');
+    $this->assertTrue($new->suppressed);
+    $this->assertSame('provider', $new->timeBasis);
+    $this->assertSame($now + 29 * 86400, $new->expires);
+    $this->assertSame(200, $send(3, gmdate('c', $now - 20 * 86400)));
+    $this->assertSame($new->expires, $policy->decide('timed@example.com')->expires);
+    $this->assertSame(200, $send(4, gmdate('c', $now - 86400)));
+    $this->assertSame($new->expires, $policy->decide('timed@example.com')->expires);
+    $this->assertSame(400, $send(5, 'yesterday'));
+    $this->assertSame(400, $send(6, '2026-02-30T00:00:00Z'));
+    $this->assertSame(400, $send(7, gmdate('c', $now + 600)));
+    $this->assertSame(200, $send(8, gmdate('c', $now + 120)));
+    $this->assertSame($now, $policy->decide('timed@example.com')->occurred);
+    $this->assertSame('clamped', $policy->decide('timed@example.com')->timeBasis);
+  }
+
+  /**
+   * Failed state persistence rolls the event insert back for a safe retry.
+   */
+  public function testStateFailureRollsBackEvent(): void {
+    $this->setSecret(self::SECRET);
+    $database = $this->container->get('database');
+    $database->schema()->dropTable('postmark_suppression');
+    $this->expectException(DatabaseExceptionWrapper::class);
+    try {
+      $this->receive($this->request(self::SECRET));
+    }
+    finally {
+      $this->assertSame(0, $this->eventCount());
+    }
+  }
+
+  /**
+   * Long-running requests retain the same receipt and clamping reference.
+   */
+  public function testReceiptTimeIsConsistent(): void {
+    $this->setSecret(self::SECRET);
+    $time = $this->createMock(TimeInterface::class);
+    $time->method('getRequestTime')->willReturn(100);
+    $time->method('getCurrentTime')->willReturn(160);
+    $this->container->set('datetime.time', $time);
+    $body = json_encode([
+      'RecordType' => 'Bounce',
+      'Type' => 'SoftBounce',
+      'Email' => 'clock@example.com',
+      'BouncedAt' => gmdate('c', 150),
+    ]);
+    $this->assertSame(200, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+    $row = $this->container->get('database')->select('postmark_events')->fields('postmark_events')->execute()->fetchAssoc();
+    $this->assertSame(100, (int) $row['created']);
+    $this->assertSame(100, (int) $row['occurred']);
+    $this->assertSame('clamped', $row['time_basis']);
   }
 
 }

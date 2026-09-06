@@ -8,6 +8,7 @@
 use Drupal\Component\Datetime\Time;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Site\Settings;
+use Drupal\postmark_webhooks\Suppression\SuppressionStore;
 use Drupal\postmark_webhooks\Controller\PostmarkWebhookController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -25,8 +26,9 @@ fgets(STDIN);
 $request = Request::create('/api/webhooks/postmark', 'POST', [], [], [], [], json_encode([
   'RecordType' => 'Bounce',
   'Email' => 'concurrent@example.com',
-  'ID' => 123,
+  'ID' => $input['event_id'] ?? 123,
+  'Type' => 'HardBounce',
 ]));
 $request->headers->set('Authorization', 'Basic ' . base64_encode('postmark:concurrency-test'));
-$controller = new PostmarkWebhookController($database, new Time(new RequestStack()));
+$controller = new PostmarkWebhookController($database, new Time(new RequestStack()), new SuppressionStore($database));
 fwrite(STDOUT, (string) $controller->receive($request)->getStatusCode());
