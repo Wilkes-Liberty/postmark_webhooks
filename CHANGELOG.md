@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- #3621133: Accept a settings-only previous webhook secret until a fixed expiry; reject malformed active credentials safely.
+- #3621125: Generate endpoint URLs through routing and verify HTTP authentication and settings access.
+
 - #3621123: Check every To/Cc/Bcc recipient before core mail transport and reject malformed lists safely.
 - Issue #3621122: Reject missing, empty or padded Bounce types before claiming event identity, so corrected retries can establish suppression.
 
