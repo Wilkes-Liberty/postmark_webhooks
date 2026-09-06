@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621137: Verify real subdirectory HTTP deployment and complete responsive operator-form integration coverage.
+
 - #3621136: Add optional read-only provider reconciliation with reviewed digests and atomic local import checkpoints.
 
 - #3621135: Add audited recipient export and bounded history erasure while retaining suppression, and remove stored provider free text.

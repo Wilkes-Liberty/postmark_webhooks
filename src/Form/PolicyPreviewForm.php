@@ -39,6 +39,8 @@ final class PolicyPreviewForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $form['#cache']['max-age'] = 0;
+    $form['#attributes']['class'][] = 'postmark-webhooks-operator';
+    $form['#attached']['library'][] = 'postmark_webhooks/operator';
     $form['explanation'] = [
       '#markup' => $this->t('This preview sends no mail and changes no suppression evidence. An allowed result does not guarantee provider acceptance or delivery.'),
     ];
