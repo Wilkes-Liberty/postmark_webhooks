@@ -53,6 +53,7 @@ drush() {
 
 install_site() {
   local root="$1"
+  local secret="$2"
   local db="$root/web/sites/default/files/.ht.sqlite"
   mkdir -p "$root/web/sites/default/files"
   drush "$root" site:install minimal \
@@ -61,26 +62,35 @@ install_site() {
     --site-name=PostmarkDocs
   chmod u+w "$root/web/sites/default/settings.php"
   # Disposable fixture only. Never copy a host POSTMARK_* token into /tmp.
-  cat >> "$root/web/sites/default/settings.php" <<'PHP'
-
-$settings['postmark_webhooks.webhook_secret'] = 'docs-walkthrough-only';
-PHP
+  python3 - "$root/web/sites/default/settings.php" "$secret" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+secret = sys.argv[2]
+if any(c not in '0123456789abcdef' for c in secret) or len(secret) < 32:
+    raise SystemExit('Walkthrough secret must be a hex token.')
+path.write_text(path.read_text(encoding='utf-8') + "\n$settings['postmark_webhooks.webhook_secret'] = '%s';\n" % secret, encoding='utf-8')
+PY
   chmod u-w "$root/web/sites/default/settings.php"
 }
 
 assert_diagnostics() {
   local root="$1"
+  local secret="$2"
   local json_file="$root/diagnostics.json"
   drush "$root" postmark-webhooks:diagnostics --format=json > "$json_file"
-  python3 - "$json_file" <<'PY'
+  python3 - "$json_file" "$secret" <<'PY'
 import json, sys
 raw = open(sys.argv[1], encoding='utf-8').read()
+secret = sys.argv[2]
 data = json.loads(raw)
 assert data.get("secret_configured") is True
-assert "docs-walkthrough-only" not in raw
+assert secret not in raw
 print("diagnostics omit the secret and report it configured")
 PY
 }
+
+WALKTHROUGH_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
 
 echo "=== Shared Drupal fixture ==="
 if [[ -d "$BASE/vendor" && -f "$BASE/composer.json" ]]; then
@@ -94,12 +104,12 @@ INSTALL="$BASE-install"
 remove_disposable_root "$INSTALL"
 cp -a "$BASE" "$INSTALL"
 require_dist "$INSTALL" "drupal/postmark_webhooks:^1.0@alpha"
-install_site "$INSTALL"
+install_site "$INSTALL" "$WALKTHROUGH_SECRET"
 drush "$INSTALL" pm:enable postmark_webhooks
 drush "$INSTALL" cache:rebuild
 drush "$INSTALL" pm:list --filter=postmark_webhooks --status=enabled
 drush "$INSTALL" config:get postmark_webhooks.settings
-assert_diagnostics "$INSTALL"
+assert_diagnostics "$INSTALL" "$WALKTHROUGH_SECRET"
 echo "Fresh install walkthrough passed."
 
 echo "=== Alpha1 to current package upgrade ==="
@@ -107,12 +117,12 @@ UPGRADE="$BASE-upgrade"
 remove_disposable_root "$UPGRADE"
 cp -a "$BASE" "$UPGRADE"
 require_dist "$UPGRADE" "drupal/postmark_webhooks:1.0.0-alpha1"
-install_site "$UPGRADE"
+install_site "$UPGRADE" "$WALKTHROUGH_SECRET"
 drush "$UPGRADE" pm:enable postmark_webhooks
 require_dist "$UPGRADE" "drupal/postmark_webhooks:^1.0@alpha"
 drush "$UPGRADE" updatedb
 drush "$UPGRADE" cache:rebuild
-assert_diagnostics "$UPGRADE"
+assert_diagnostics "$UPGRADE" "$WALKTHROUGH_SECRET"
 schema="$(drush "$UPGRADE" php:eval 'echo \Drupal::keyValue("system.schema")->get("postmark_webhooks");')"
 python3 -c 'import sys; schema=int(sys.argv[1] or 0); assert schema >= 10006, schema; print("schema version %s after updatedb" % schema)' "$schema"
 echo "Alpha1 upgrade walkthrough passed."
