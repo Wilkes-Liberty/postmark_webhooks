@@ -24,7 +24,9 @@ The published job on Drupal 11.4 / PHP 8.4 / PostgreSQL 16 runs:
    `hook_update_N` batches, durable suppression backfill, unique event keys).
 
 Those tests cover settings enable/disable, permission boundaries, legacy rows
-and cache rebuild after updates. They do not send provider mail.
+and cache rebuild after updates. They do not send provider mail. Operator
+installation, upgrade and rollback steps are in
+[installation-upgrade.md](installation-upgrade.md).
 
 ## Real Postmark acceptance — not executed here
 
