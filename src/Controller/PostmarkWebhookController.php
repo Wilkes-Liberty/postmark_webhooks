@@ -11,7 +11,7 @@ use Drupal\postmark_webhooks\Event\EventTime;
 use Drupal\postmark_webhooks\Suppression\SuppressionStore;
 use Drupal\Component\Datetime\TimeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\Core\Site\Settings;
+use Drupal\postmark_webhooks\Authentication\WebhookCredentials;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -51,14 +51,14 @@ class PostmarkWebhookController extends ControllerBase {
    * Authenticates via HTTP Basic Auth, records the event, and responds.
    */
   public function receive(Request $request): Response {
-    $configured = (string) (Settings::get('postmark_webhooks.webhook_secret') ?? '');
-    if ($configured === '') {
+    $credentials = WebhookCredentials::fromSettings();
+    if (!$credentials->isConfigured()) {
       // Misconfiguration — refuse rather than accept unauthenticated posts.
       return new Response('Service Unavailable', 503);
     }
 
     $provided = $this->basicAuthPassword($request);
-    if ($provided === NULL || !hash_equals($configured, $provided)) {
+    if (!$credentials->accepts($provided, $this->time->getCurrentTime())) {
       return new Response('Unauthorized', 401, [
         'WWW-Authenticate' => 'Basic realm="postmark-webhook"',
       ]);
