@@ -29,6 +29,7 @@ final class PolicyPreview {
     private readonly EmailValidatorInterface $emailValidator,
     private readonly TimeInterface $time,
     private readonly IntakeMetrics $metrics,
+    private readonly HealthEvaluator $health,
   ) {}
 
   /**
@@ -46,6 +47,7 @@ final class PolicyPreview {
         'direct_symfony' => FALSE,
       ],
       'intake' => $this->metrics->snapshot(),
+      'health' => $this->health->summary(),
     ];
   }
 

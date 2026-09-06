@@ -55,6 +55,9 @@ final class IntakeMetrics {
    */
   public function snapshot(): array {
     $result = array_fill_keys(['accepted', 'duplicate', 'rejected'], ['total' => 0, 'last_seen' => NULL]);
+    if (!$this->database->schema()->tableExists('postmark_intake_metrics')) {
+      return $result;
+    }
     foreach ($this->database->select('postmark_intake_metrics', 'm')->fields('m')->execute() as $row) {
       $result[$row->outcome] = ['total' => (int) $row->total, 'last_seen' => (int) $row->last_seen];
     }

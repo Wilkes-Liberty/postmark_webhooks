@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\postmark_webhooks\Drush\Commands;
 
 use Consolidation\OutputFormatters\StructuredData\UnstructuredData;
+use Drupal\postmark_webhooks\Diagnostics\HealthEvaluator;
 use Drupal\postmark_webhooks\Diagnostics\PolicyPreview;
 use Drupal\postmark_webhooks\Source\SourceContext;
 use Drush\Attributes as CLI;
@@ -19,7 +20,10 @@ final class PostmarkWebhookCommands extends DrushCommands {
   /**
    * Constructs the commands.
    */
-  public function __construct(private readonly PolicyPreview $preview) {
+  public function __construct(
+    private readonly PolicyPreview $preview,
+    private readonly HealthEvaluator $health,
+  ) {
     parent::__construct();
   }
 
@@ -27,7 +31,10 @@ final class PostmarkWebhookCommands extends DrushCommands {
    * Creates the commands with Drush 12+ service discovery.
    */
   public static function create(ContainerInterface $container): self {
-    return new self($container->get('postmark_webhooks.policy_preview'));
+    return new self(
+      $container->get('postmark_webhooks.policy_preview'),
+      $container->get('postmark_webhooks.health'),
+    );
   }
 
   /**
@@ -63,6 +70,14 @@ final class PostmarkWebhookCommands extends DrushCommands {
   #[CLI\Command(name: 'postmark-webhooks:diagnostics', aliases: ['pm-wh:diagnostics'])]
   public function diagnostics(array $options = ['format' => 'yaml']): UnstructuredData {
     return new UnstructuredData($this->preview->diagnostics());
+  }
+
+  /**
+   * Reports webhook health without recipient or secret labels.
+   */
+  #[CLI\Command(name: 'postmark-webhooks:health', aliases: ['pm-wh:health'])]
+  public function health(array $options = ['format' => 'yaml']): UnstructuredData {
+    return new UnstructuredData($this->health->evaluate());
   }
 
 }

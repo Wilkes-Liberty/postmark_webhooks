@@ -339,3 +339,48 @@ function postmark_webhooks_update_10006(array &$sandbox): void {
   $sandbox['#finished'] = count($ids) < 250 || $sandbox['last_eid'] >= $sandbox['maximum']
     ? 1 : $sandbox['last_eid'] / $sandbox['maximum'];
 }
+
+/**
+ * Implements hook_requirements().
+ */
+#[\Drupal\Core\Hook\Attribute\LegacyRequirementsHook]
+function postmark_webhooks_requirements($phase): array {
+  if ($phase !== 'runtime') {
+    return [];
+  }
+  $requirements = [];
+  try {
+    $report = \Drupal::service('postmark_webhooks.health')->evaluate();
+  }
+  catch (\Throwable $exception) {
+    return [
+      'postmark_webhooks_health' => [
+        'title' => t('Postmark Webhooks'),
+        'value' => 'error',
+        'severity' => REQUIREMENT_ERROR,
+        'description' => t('Health evaluation could not run. Database updates may still be pending.'),
+      ],
+    ];
+  }
+  $map = [
+    'ok' => REQUIREMENT_OK,
+    'unknown' => REQUIREMENT_INFO,
+    'warning' => REQUIREMENT_WARNING,
+    'error' => REQUIREMENT_ERROR,
+  ];
+  $requirements['postmark_webhooks_health'] = [
+    'title' => t('Postmark Webhooks'),
+    'value' => $report['severity'],
+    'severity' => $map[$report['severity']],
+    'description' => t('Local intake counters do not prove that Postmark can reach this endpoint.'),
+  ];
+  foreach ($report['checks'] as $check) {
+    $requirements['postmark_webhooks_health_' . $check['id']] = [
+      'title' => t('Postmark Webhooks: @id', ['@id' => $check['id']]),
+      'value' => $check['status'],
+      'severity' => $map[$check['severity']],
+      'description' => t('@detail', ['@detail' => $check['detail']]),
+    ];
+  }
+  return $requirements;
+}

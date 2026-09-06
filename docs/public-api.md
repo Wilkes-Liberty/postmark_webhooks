@@ -99,11 +99,12 @@ suppression never reports an enforced block. `delivery_guaranteed` is always
 false.
 
 `drush postmark-webhooks:diagnostics` keys: `enabled`, `secret_configured`,
-`previous_secret_status`, `coverage`, `intake`. `previous_secret_status` is
+`previous_secret_status`, `coverage`, `intake`, `health`. `previous_secret_status` is
 `absent`, `invalid`, `active` or `expired`. `coverage` has `core`,
 `mailer_plus` and `direct_symfony`. `intake` has `accepted`, `duplicate` and
-`rejected`, each with `total` and `last_seen`. Diagnostics omit secrets and
-mailboxes.
+`rejected`, each with `total` and `last_seen`. `health` has `severity`,
+`endpoint_reachability` and `checks`. Diagnostics omit secrets and
+mailboxes. `drush postmark-webhooks:health` returns the full health report.
 
 1.x may add JSON keys. It will not rename or remove these keys without
 deprecation.

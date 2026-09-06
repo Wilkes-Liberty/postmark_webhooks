@@ -356,6 +356,10 @@ drush postmark-webhooks:diagnostics --format=json
 
 Diagnostics expose credential readiness, known adapter coverage, and aggregate
 accepted, duplicate and authenticated-rejection counts with last-seen timestamps.
+Configurable health checks, status-report output and optional hook-based alerts
+are in [docs/health.md](docs/health.md). `drush postmark-webhooks:health`
+prints the machine-readable report. This module does not send those alerts as
+mail. Quiet sites stay unknown unless you set an expected activity window.
 The counters begin at installation of update 10004; they do not reconstruct past
 traffic. Successful event storage and its accepted counter commit together.
 Counters survive history retention and contain no mailbox, message or secret
@@ -479,8 +483,9 @@ and SQLite run the same suite on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5.
 See [docs/integration-verification.md](docs/integration-verification.md),
 [docs/database-verification.md](docs/database-verification.md),
 [docs/published-package-verification.md](docs/published-package-verification.md),
-[docs/installation-upgrade.md](docs/installation-upgrade.md) and
-[docs/public-api.md](docs/public-api.md).
+[docs/installation-upgrade.md](docs/installation-upgrade.md),
+[docs/public-api.md](docs/public-api.md) and
+[docs/health.md](docs/health.md).
 
 HTTP coverage includes settings permissions, secret exclusion, Basic Auth and
 retry handling through the real route. Routing-context tests cover root,

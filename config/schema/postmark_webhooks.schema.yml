@@ -26,6 +26,34 @@ postmark_webhooks.settings:
         Range:
           min: 0
           max: 3650
+    health_expected_activity_seconds:
+      type: integer
+      label: 'Expected accepted-intake window (seconds; 0 = silence is unknown)'
+      constraints:
+        Range:
+          min: 0
+          max: 31536000
+    health_retention_backlog_warning:
+      type: integer
+      label: 'Expired-history warning threshold (0 = disabled)'
+      constraints:
+        Range:
+          min: 0
+          max: 1000000
+    health_rotation_warning_seconds:
+      type: integer
+      label: 'Previous-secret expiry warning (seconds; 0 = disabled)'
+      constraints:
+        Range:
+          min: 0
+          max: 2592000
+    health_alert_cooldown_seconds:
+      type: integer
+      label: 'Repeated-alert cooldown (seconds; 0 = only on change)'
+      constraints:
+        Range:
+          min: 0
+          max: 604800
     source_policies:
       type: sequence
       label: 'Explicit server and stream policy mappings'

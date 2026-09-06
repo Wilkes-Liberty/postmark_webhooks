@@ -37,6 +37,20 @@ final class WebhookCredentials {
   }
 
   /**
+   * Returns the previous-secret expiry timestamp, or NULL if none is usable.
+   */
+  public function previousExpiresAt(): ?int {
+    if (!is_array($this->previous)
+      || !is_string($this->previous['secret'] ?? NULL)
+      || $this->previous['secret'] === ''
+      || !is_int($this->previous['expires'] ?? NULL)
+      || $this->previous['expires'] <= 0) {
+      return NULL;
+    }
+    return $this->previous['expires'];
+  }
+
+  /**
    * Returns readiness without exposing either credential or its expiry.
    */
   public function rotationStatus(int $now): string {
