@@ -2,38 +2,40 @@
 
 ## [Unreleased]
 
+## [1.0.0-alpha2] - 2026-09-06
+
 - #3621137: Verify real subdirectory HTTP deployment and complete responsive operator-form integration coverage.
-
 - #3621136: Add optional read-only provider reconciliation with reviewed digests and atomic local import checkpoints.
-
 - #3621135: Add audited recipient export and bounded history erasure while retaining suppression, and remove stored provider free text.
-
 - #3621130: Add a protected recipient inspector and CSRF-confirmed, audited source-specific hard-bounce recovery.
-
 - #3621131: Add read-only policy previews, structured Drush diagnostics and privacy-safe atomic intake counters.
-
 - #3621128: Add an optional Mailer Plus adapter that checks final recipients before native and compatibility transport.
-
 - #3621129: Apply ordered subscription suppression and source-specific hard-bounce recovery without clearing consent protections.
-
 - #3621132: Add explicit source-scoped policy and settings-bound intake source restrictions while preserving the site-wide default.
-
 - #3621134: Bound each retention cleanup to 250 rows without changing durable suppression.
-
 - #3621133: Accept a settings-only previous webhook secret until a fixed expiry; reject malformed active credentials safely.
 - #3621125: Generate endpoint URLs through routing and verify HTTP authentication and settings access.
-
 - #3621123: Check every To/Cc/Bcc recipient before core mail transport and reject malformed lists safely.
 - Issue #3621122: Reject missing, empty or padded Bounce types before claiming event identity, so corrected retries can establish suppression.
-
 - #3621121: Preserve minimal suppression evidence independently of event retention, including alpha upgrades.
 - #3621124: Use validated provider occurrence times and preserve newer evidence on delayed events.
 - #3621126: Expose one injectable, typed suppression policy for integrations and diagnostics.
-
 - #3621122: Validate webhook object shape, extracted fields and body size before storage; validate imported suppression settings.
-
 - #3621119: Preserve distinct webhook events and recipients with a versioned event identity.
 - #3621120: Enforce retry deduplication atomically, preserving legacy rows during upgrade and propagating unrelated database failures.
+
+### Upgrading from alpha1
+
+Back up the database, update the package and run `drush updatedb -y` followed by
+`drush cache:rebuild`. Updates preserve retained event rows and backfill minimal
+suppression evidence before scrubbing legacy provider descriptions and payloads.
+History already discarded by alpha1 cannot be reconstructed locally. Hard-bounce
+and complaint suppression now survives history retention. Review suppression
+policy before resuming mail; recovered provider state is an optional, reviewed
+operation. The Mailer Plus and reconciliation submodules remain opt-in.
+
+This is an alpha release. PostgreSQL 16 is the verified database target; the
+integration matrix covers Drupal 10.3/PHP 8.3 and Drupal 11/PHP 8.4.
 
 ## [1.0.0-alpha1] - 2026-09-05
 

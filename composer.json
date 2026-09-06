@@ -1,6 +1,6 @@
 {
     "name": "drupal/postmark_webhooks",
-    "description": "Receive Postmark bounce, spam, and delivery webhooks and suppress outbound Drupal mail.",
+    "description": "Receive Postmark webhooks and apply durable, source-aware Drupal mail suppression.",
     "type": "drupal-module",
     "keywords": [
         "Drupal",
