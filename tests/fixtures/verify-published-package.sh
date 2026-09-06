@@ -9,6 +9,18 @@ DRUPAL_CONSTRAINT="${DRUPAL_CONSTRAINT:-11.4.*}"
 SIMPLETEST_DB="${SIMPLETEST_DB:?SIMPLETEST_DB is required}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+require_dist() {
+  composer require --working-dir="$1" --prefer-dist --no-interaction --no-progress "$2"
+}
+
+assert_published_dist() {
+  local module="$1"
+  if [[ -L "$module" || -e "$module/.git" ]]; then
+    echo "Refusing a git checkout at $module; published verification needs the Composer dist." >&2
+    exit 1
+  fi
+}
+
 rm -rf "$ROOT"
 mkdir -p "$ROOT"
 export POSTMARK_CI_DIR="$ROOT"
@@ -18,12 +30,9 @@ export AUDIT_BLOCK_INSECURE="${AUDIT_BLOCK_INSECURE:-true}"
 python3 "$SCRIPT_DIR/create-ci-fixture.py"
 composer install --working-dir="$ROOT" --no-interaction --no-progress
 
-composer require --working-dir="$ROOT" --no-interaction --no-progress "drupal/postmark_webhooks:$VERSION"
+require_dist "$ROOT" "drupal/postmark_webhooks:$VERSION"
 MODULE="$ROOT/web/modules/contrib/postmark_webhooks"
-if [[ -L "$MODULE" ]]; then
-  echo "Refusing a git symlink; published verification needs the Composer dist." >&2
-  exit 1
-fi
+assert_published_dist "$MODULE"
 
 LOCK_SHA1="$(python3 - <<PY
 import json
@@ -57,7 +66,7 @@ for attempt in $(seq 1 20); do
     echo "Published-package HTTP server exited before it was ready." >&2
     exit 1
   fi
-  if curl --silent --output /dev/null http://127.0.0.1:8888/robots.txt; then
+  if curl --fail --silent --max-time 5 --output /dev/null http://127.0.0.1:8888/robots.txt; then
     ready=true
     break
   fi
@@ -94,13 +103,10 @@ mkdir -p "$UPGRADE_ROOT"
 export POSTMARK_CI_DIR="$UPGRADE_ROOT"
 python3 "$SCRIPT_DIR/create-ci-fixture.py"
 composer install --working-dir="$UPGRADE_ROOT" --no-interaction --no-progress
-composer require --working-dir="$UPGRADE_ROOT" --no-interaction --no-progress "drupal/postmark_webhooks:1.0.0-alpha1"
-composer require --working-dir="$UPGRADE_ROOT" --no-interaction --no-progress "drupal/postmark_webhooks:$VERSION"
+require_dist "$UPGRADE_ROOT" "drupal/postmark_webhooks:1.0.0-alpha1"
+require_dist "$UPGRADE_ROOT" "drupal/postmark_webhooks:$VERSION"
 UPGRADE_MODULE="$UPGRADE_ROOT/web/modules/contrib/postmark_webhooks"
-if [[ -L "$UPGRADE_MODULE" ]]; then
-  echo "Refusing a git symlink on the upgrade fixture." >&2
-  exit 1
-fi
+assert_published_dist "$UPGRADE_MODULE"
 UPGRADE_META="$(python3 - <<PY
 import json
 lock = json.load(open("$UPGRADE_ROOT/composer.lock"))
