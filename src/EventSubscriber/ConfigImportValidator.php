@@ -3,6 +3,7 @@
 namespace Drupal\postmark_webhooks\EventSubscriber;
 
 use Drupal\Core\Config\ConfigEvents;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Config\ConfigImporterEvent;
 use Drupal\Core\Config\TypedConfigManagerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -40,7 +41,7 @@ final class ConfigImportValidator implements EventSubscriberInterface {
     }
     $violations = $this->typedConfig->createFromNameAndData($name, $data)->validate();
     if (count($violations)) {
-      $importer->logError('Postmark Webhooks settings violate the configuration schema. Check suppression and retention limits.');
+      $importer->logError(new TranslatableMarkup('Postmark Webhooks settings violate the configuration schema. Check suppression and retention limits.'));
     }
   }
 
