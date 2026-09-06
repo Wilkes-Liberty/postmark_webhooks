@@ -31,13 +31,23 @@ final class Reconciliation {
     $events = $this->reader->dump($source, $date);
     $differences = ['new_evidence' => 0, 'newer_evidence' => 0, 'unchanged_or_older' => 0];
     $reasons = [];
+    $keys = [];
     foreach ($events as $event) {
       $reason = SuppressionStore::reason($event);
       $reasons[$reason] = ($reasons[$reason] ?? 0) + 1;
-      $key = hash('sha256', json_encode([$event['recipient'], $source->serverId, $source->messageStream, $reason], JSON_THROW_ON_ERROR));
-      $current = $this->database->select('postmark_suppression', 's')->fields('s', ['occurred'])
-        ->condition('state_key', $key)->execute()->fetchField();
-      $difference = $current === FALSE ? 'new_evidence' : ((int) $current < $event['occurred'] ? 'newer_evidence' : 'unchanged_or_older');
+      $keys[] = hash('sha256', json_encode([$event['recipient'], $source->serverId, $source->messageStream, $reason], JSON_THROW_ON_ERROR));
+    }
+    $existing = [];
+    foreach (array_chunk(array_unique($keys), 250) as $chunk) {
+      $existing += $this->database->select('postmark_suppression', 's')
+        ->fields('s', ['state_key', 'occurred', 'evidence'])
+        ->condition('state_key', $chunk, 'IN')->execute()->fetchAllAssoc('state_key');
+    }
+    foreach ($events as $index => $event) {
+      $current = $existing[$keys[$index]] ?? NULL;
+      $newer = $current && ((int) $current->occurred < $event['occurred']
+        || ((int) $current->occurred === $event['occurred'] && strcmp($current->evidence, $event['event_key']) < 0));
+      $difference = !$current ? 'new_evidence' : ($newer ? 'newer_evidence' : 'unchanged_or_older');
       $differences[$difference]++;
     }
     $job = [
@@ -135,7 +145,9 @@ final class Reconciliation {
    * Hashes canonical identities independently of provider order and fetch time.
    */
   private function digest(array $events): string {
-    return hash('sha256', json_encode(array_column($events, 'event_key'), JSON_THROW_ON_ERROR));
+    $keys = array_column($events, 'event_key');
+    sort($keys, SORT_STRING);
+    return hash('sha256', json_encode($keys, JSON_THROW_ON_ERROR));
   }
 
   /**

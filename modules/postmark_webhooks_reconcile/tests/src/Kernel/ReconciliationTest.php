@@ -116,6 +116,29 @@ class ReconciliationTest extends KernelTestBase {
   }
 
   /**
+   * Preview mirrors the store's deterministic evidence ordering at equal times.
+   */
+  public function testEqualTimestampEvidencePreview(): void {
+    $this->container->get('postmark_webhooks.suppression_store')->record([
+      'event_type' => 'Bounce',
+      'bounce_type' => 'HardBounce',
+      'recipient' => 'recipient0@example.com',
+      'server_id' => '1',
+      'message_stream' => 'outbound',
+      'created' => 1577880000,
+      'event_key' => str_repeat('0', 64),
+    ]);
+    $history = [];
+    $reconciliation = $this->reconciliation(array_merge($this->responses(), $this->responses()), $history);
+    $plan = $reconciliation->preview(new SourceContext('1', 'outbound'), '2020-01-01');
+    $this->assertSame(1, $plan['differences']['newer_evidence']);
+    $this->assertSame(0, $plan['differences']['unchanged_or_older']);
+    $reconciliation->apply($plan['job_id']);
+    $evidence = $this->container->get('database')->select('postmark_suppression', 's')->fields('s', ['evidence'])->execute()->fetchField();
+    $this->assertNotSame(str_repeat('0', 64), $evidence);
+  }
+
+  /**
    * Rate limits preserve progress and expose only sanitized retry guidance.
    */
   public function testRateLimitPreservesCheckpoint(): void {
