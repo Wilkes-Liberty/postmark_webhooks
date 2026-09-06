@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Issue #3621122: Reject missing, empty or padded Bounce types before claiming event identity, so corrected retries can establish suppression.
+
 - #3621121: Preserve minimal suppression evidence independently of event retention, including alpha upgrades.
 - #3621124: Use validated provider occurrence times and preserve newer evidence on delayed events.
 - #3621126: Expose one injectable, typed suppression policy for integrations and diagnostics.
