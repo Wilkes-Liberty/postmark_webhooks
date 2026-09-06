@@ -54,6 +54,30 @@ postmark_webhooks.settings:
         Range:
           min: 0
           max: 604800
+    integration_events_enabled:
+      type: boolean
+      label: 'Enable post-commit integration events'
+    integration_events_batch:
+      type: integer
+      label: 'Integration deliveries per cron run'
+      constraints:
+        Range:
+          min: 1
+          max: 250
+    integration_events_retention_seconds:
+      type: integer
+      label: 'Delivered outbox retention (seconds; 0 = keep)'
+      constraints:
+        Range:
+          min: 0
+          max: 31536000
+    integration_events_max_attempts:
+      type: integer
+      label: 'Maximum delivery attempts'
+      constraints:
+        Range:
+          min: 1
+          max: 32
     source_policies:
       type: sequence
       label: 'Explicit server and stream policy mappings'

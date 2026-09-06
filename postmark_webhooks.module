@@ -83,6 +83,22 @@ function postmark_webhooks_cron(): void {
       '@message' => $exception->getMessage(),
     ]);
   }
+  try {
+    \Drupal::service('postmark_webhooks.integration_outbox')->dispatch();
+  }
+  catch (\Throwable $exception) {
+    \Drupal::logger('postmark_webhooks')->error('Integration delivery failed during cron: @message', [
+      '@message' => $exception->getMessage(),
+    ]);
+  }
+  try {
+    \Drupal::service('postmark_webhooks.integration_outbox')->prune();
+  }
+  catch (\Throwable $exception) {
+    \Drupal::logger('postmark_webhooks')->error('Integration outbox cleanup failed during cron: @message', [
+      '@message' => $exception->getMessage(),
+    ]);
+  }
 }
 
 /**

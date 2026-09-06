@@ -164,6 +164,40 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
       '#max' => 604800,
     ];
 
+    $form['integration'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Integration events'),
+      '#open' => FALSE,
+    ];
+    $form['integration']['integration_events_enabled'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Enable post-commit integration events'),
+      '#description' => $this->t('Off by default. After intake commits, cron delivers typed events to other modules. Delivery is at-least-once; subscribers must be idempotent. Subscriber failure does not undo suppression. This module does not send mail.'),
+      '#default_value' => (bool) ($config->get('integration_events_enabled') ?? FALSE),
+    ];
+    $form['integration']['integration_events_batch'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Deliveries per cron run'),
+      '#default_value' => $config->get('integration_events_batch') ?? 25,
+      '#min' => 1,
+      '#max' => 250,
+    ];
+    $form['integration']['integration_events_retention_seconds'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Delivered outbox retention (seconds)'),
+      '#description' => $this->t('0 keeps delivered rows. Failed rows are kept for inspectable replay.'),
+      '#default_value' => $config->get('integration_events_retention_seconds') ?? 604800,
+      '#min' => 0,
+      '#max' => 31536000,
+    ];
+    $form['integration']['integration_events_max_attempts'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Maximum delivery attempts'),
+      '#default_value' => $config->get('integration_events_max_attempts') ?? 8,
+      '#min' => 1,
+      '#max' => 32,
+    ];
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -180,6 +214,10 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
       ->set('health_retention_backlog_warning', (int) $form_state->getValue('health_retention_backlog_warning'))
       ->set('health_rotation_warning_seconds', (int) $form_state->getValue('health_rotation_warning_seconds'))
       ->set('health_alert_cooldown_seconds', (int) $form_state->getValue('health_alert_cooldown_seconds'))
+      ->set('integration_events_enabled', (bool) $form_state->getValue('integration_events_enabled'))
+      ->set('integration_events_batch', (int) $form_state->getValue('integration_events_batch'))
+      ->set('integration_events_retention_seconds', (int) $form_state->getValue('integration_events_retention_seconds'))
+      ->set('integration_events_max_attempts', (int) $form_state->getValue('integration_events_max_attempts'))
       ->save();
 
     parent::submitForm($form, $form_state);

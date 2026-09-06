@@ -7,6 +7,7 @@ namespace Drupal\postmark_webhooks\Drush\Commands;
 use Consolidation\OutputFormatters\StructuredData\UnstructuredData;
 use Drupal\postmark_webhooks\Diagnostics\HealthEvaluator;
 use Drupal\postmark_webhooks\Diagnostics\PolicyPreview;
+use Drupal\postmark_webhooks\Integration\IntegrationOutbox;
 use Drupal\postmark_webhooks\Source\SourceContext;
 use Drush\Attributes as CLI;
 use Drush\Commands\DrushCommands;
@@ -23,6 +24,7 @@ final class PostmarkWebhookCommands extends DrushCommands {
   public function __construct(
     private readonly PolicyPreview $preview,
     private readonly HealthEvaluator $health,
+    private readonly IntegrationOutbox $outbox,
   ) {
     parent::__construct();
   }
@@ -34,6 +36,7 @@ final class PostmarkWebhookCommands extends DrushCommands {
     return new self(
       $container->get('postmark_webhooks.policy_preview'),
       $container->get('postmark_webhooks.health'),
+      $container->get('postmark_webhooks.integration_outbox'),
     );
   }
 
@@ -78,6 +81,16 @@ final class PostmarkWebhookCommands extends DrushCommands {
   #[CLI\Command(name: 'postmark-webhooks:health', aliases: ['pm-wh:health'])]
   public function health(array $options = ['format' => 'yaml']): UnstructuredData {
     return new UnstructuredData($this->health->evaluate());
+  }
+
+  /**
+   * Lists integration outbox rows without recipient or secret labels.
+   */
+  #[CLI\Command(name: 'postmark-webhooks:outbox', aliases: ['pm-wh:outbox'])]
+  public function outbox(array $options = ['format' => 'json']): UnstructuredData {
+    return new UnstructuredData([
+      'rows' => $this->outbox->inspect(),
+    ]);
   }
 
 }

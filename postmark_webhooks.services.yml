@@ -7,7 +7,10 @@ services:
     arguments: ['@database']
   postmark_webhooks.inspector:
     class: Drupal\postmark_webhooks\Operator\SuppressionInspector
-    arguments: ['@database', '@postmark_webhooks.suppression_policy', '@postmark_webhooks.suppression_store', '@postmark_webhooks.operator_audit', '@email.validator', '@datetime.time']
+    arguments: ['@database', '@postmark_webhooks.suppression_policy', '@postmark_webhooks.suppression_store', '@postmark_webhooks.operator_audit', '@email.validator', '@datetime.time', '@postmark_webhooks.integration_outbox']
+  postmark_webhooks.integration_outbox:
+    class: Drupal\postmark_webhooks\Integration\IntegrationOutbox
+    arguments: ['@database', '@config.factory', '@module_handler', '@lock', '@logger.factory', '@datetime.time']
   postmark_webhooks.intake_metrics:
     class: Drupal\postmark_webhooks\Diagnostics\IntakeMetrics
     arguments: ['@database']

@@ -152,6 +152,28 @@ function postmark_webhooks_schema() {
     'primary key' => ['state_key'],
     'indexes' => ['recipient' => ['recipient']],
   ];
+  $schema['postmark_integration_outbox'] = [
+    'description' => 'At-least-once integration notifications after committed intake.',
+    'fields' => [
+      'oid' => ['type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE],
+      'fingerprint' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+      'type' => ['type' => 'varchar', 'length' => 32, 'not null' => TRUE],
+      'version' => ['type' => 'int', 'not null' => TRUE],
+      'payload' => ['type' => 'text', 'not null' => TRUE, 'size' => 'normal'],
+      'status' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE],
+      'attempts' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+      'available_at' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+      'created' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+      'delivered_at' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE, 'default' => 0],
+      'last_error' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+    ],
+    'primary key' => ['oid'],
+    'unique keys' => ['fingerprint' => ['fingerprint']],
+    'indexes' => [
+      'pending' => ['status', 'available_at'],
+      'created' => ['created'],
+    ],
+  ];
   return $schema;
 }
 
@@ -338,6 +360,17 @@ function postmark_webhooks_update_10006(array &$sandbox): void {
   }
   $sandbox['#finished'] = count($ids) < 250 || $sandbox['last_eid'] >= $sandbox['maximum']
     ? 1 : $sandbox['last_eid'] / $sandbox['maximum'];
+}
+
+/**
+ * Adds the integration outbox for existing installs.
+ */
+function postmark_webhooks_update_10007(): void {
+  $schema = drupal_get_module_schema('postmark_webhooks', 'postmark_integration_outbox');
+  $database = \Drupal::database();
+  if (!$database->schema()->tableExists('postmark_integration_outbox')) {
+    $database->schema()->createTable('postmark_integration_outbox', $schema);
+  }
 }
 
 /**
