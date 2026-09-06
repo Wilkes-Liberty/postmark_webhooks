@@ -82,7 +82,11 @@ Suppression is enabled by default and runs through `hook_mail_alter()`.
 | Delivery, Open, Click, Subscribe, unknown events | Log only; do not clear previous suppression |
 
 `complaint_suppression_days: 0` means permanent suppression. Cron retention
-applies only to event history. Minimal per-recipient, source and reason evidence
+applies only to event history. Each cron invocation removes at most 250 expired
+rows, oldest first; interrupted cleanup resumes on the next invocation without a
+separate cursor. Concurrent runs may overlap safely. Backlogs can persist beyond
+the configured retention age: schedule cron often enough to outpace intake, or
+invoke the retention service repeatedly in a controlled maintenance job. Minimal per-recipient, source and reason evidence
 lives in `postmark_suppression` and survives event deletion. The latest occurrence
 for each reason is retained, so an old event cannot reset a temporary window.
 Changing window settings re-evaluates this evidence; disabling suppression does

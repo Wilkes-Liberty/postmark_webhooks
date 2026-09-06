@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621134: Bound each retention cleanup to 250 rows without changing durable suppression.
+
 - #3621133: Accept a settings-only previous webhook secret until a fixed expiry; reject malformed active credentials safely.
 - #3621125: Generate endpoint URLs through routing and verify HTTP authentication and settings access.
 

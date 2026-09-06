@@ -1,4 +1,7 @@
 services:
+  postmark_webhooks.event_retention:
+    class: Drupal\postmark_webhooks\Retention\EventRetention
+    arguments: ['@database']
   postmark_webhooks.config_import_validator:
     class: Drupal\postmark_webhooks\EventSubscriber\ConfigImportValidator
     arguments: ['@config.typed']

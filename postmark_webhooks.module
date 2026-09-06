@@ -63,9 +63,7 @@ function postmark_webhooks_cron(): void {
     return;
   }
   $cutoff = \Drupal::time()->getRequestTime() - ($days * 86400);
-  \Drupal::database()->delete('postmark_events')
-    ->condition('created', $cutoff, '<')
-    ->execute();
+  \Drupal::service('postmark_webhooks.event_retention')->purgeBefore($cutoff);
 }
 
 /**
