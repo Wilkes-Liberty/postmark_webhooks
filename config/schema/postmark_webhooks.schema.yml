@@ -8,9 +8,21 @@ postmark_webhooks.settings:
     bounce_suppression_days:
       type: integer
       label: 'Soft-bounce suppression window (days)'
+      constraints:
+        Range:
+          min: 0
+          max: 365
     complaint_suppression_days:
       type: integer
       label: 'Spam-complaint suppression window (days; 0 = permanent)'
+      constraints:
+        Range:
+          min: 0
+          max: 3650
     event_retention_days:
       type: integer
       label: 'Postmark event retention (days; 0 = keep forever)'
+      constraints:
+        Range:
+          min: 0
+          max: 3650

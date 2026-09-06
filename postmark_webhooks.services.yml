@@ -1,0 +1,6 @@
+services:
+  postmark_webhooks.config_import_validator:
+    class: Drupal\postmark_webhooks\EventSubscriber\ConfigImportValidator
+    arguments: ['@config.typed']
+    tags:
+      - { name: event_subscriber }

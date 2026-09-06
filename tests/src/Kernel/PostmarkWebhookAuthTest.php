@@ -5,11 +5,17 @@ declare(strict_types=1);
 namespace Drupal\Tests\postmark_webhooks\Kernel;
 
 use Drupal\Core\Site\Settings;
+use Drupal\Core\Config\ConfigEvents;
+use Drupal\Core\Config\ConfigImporter;
+use Drupal\Core\Config\ConfigImporterEvent;
+use Drupal\Core\Config\MemoryStorage;
+use Drupal\Core\Config\StorageComparer;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\postmark_webhooks\Controller\PostmarkWebhookController;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * Kernel tests for the Postmark webhook HTTP Basic Auth controller.
@@ -288,6 +294,76 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
         }
       }
     }
+  }
+
+  /**
+   * Invalid payloads never leave partial or blank event rows.
+   */
+  public function testPayloadValidation(): void {
+    $this->setSecret(self::SECRET);
+    $base = ['RecordType' => 'Bounce', 'Email' => 'x@example.com'];
+    $invalid = ['[]', '{}', 'null', '42', '"text"', '[{}]'];
+    foreach ([
+      ['RecordType' => NULL], ['RecordType' => []], ['RecordType' => ''],
+      ['Email' => NULL], ['Email' => []], ['Email' => 'invalid'],
+      ['Description' => []], ['Description' => str_repeat('x', 513)],
+      ['MessageID' => 1], ['MessageID' => str_repeat('x', 256)],
+      ['ID' => -1], ['ID' => 1.5], ['ID' => []], ['ServerID' => NULL],
+      ['MessageStream' => new \stdClass()], ['BouncedAt' => []],
+      ['Recipient' => 'different@example.com'], ['Type' => "bad\0value"],
+    ] as $changes) {
+      $invalid[] = json_encode($changes + $base);
+    }
+    foreach ($invalid as $body) {
+      $this->assertSame(400, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+    }
+    $oversized = json_encode($base + ['Content' => str_repeat('x', 1048576)]);
+    $this->assertSame(413, $this->receive($this->request(self::SECRET, $oversized))->getStatusCode());
+    $this->assertSame(0, $this->eventCount());
+    $valid = $base + [
+      'Description' => str_repeat('é', 512),
+      'ID' => '18446744073709551615',
+      'Metadata' => ['nested' => ['accepted' => TRUE]],
+    ];
+    $this->assertSame(200, $this->receive($this->request(self::SECRET, json_encode($valid)))->getStatusCode());
+    $this->assertSame(1, $this->eventCount());
+  }
+
+  /**
+   * Configuration validation matches the admin form's numeric bounds.
+   */
+  public function testConfigWindowConstraints(): void {
+    $manager = $this->container->get('config.typed');
+    $data = $this->config('postmark_webhooks.settings')->getRawData();
+    foreach (['bounce_suppression_days' => 365, 'complaint_suppression_days' => 3650, 'event_retention_days' => 3650] as $key => $max) {
+      foreach ([-1, $max + 1] as $invalid) {
+        $violations = $manager->createFromNameAndData('postmark_webhooks.settings', [$key => $invalid] + $data)->validate();
+        $this->assertGreaterThan(0, count($violations));
+      }
+      $this->assertCount(0, $manager->createFromNameAndData('postmark_webhooks.settings', [$key => $max] + $data)->validate());
+    }
+  }
+
+  /**
+   * Import validation dispatch rejects invalid settings through the subscriber.
+   */
+  public function testConfigImportValidationSubscriber(): void {
+    $source = new MemoryStorage();
+    $target = new MemoryStorage();
+    $data = $this->config('postmark_webhooks.settings')->getRawData();
+    $source->write('postmark_webhooks.settings', ['bounce_suppression_days' => -1] + $data);
+    $target->write('postmark_webhooks.settings', $data);
+    $comparer = new StorageComparer($source, $target);
+    $comparer->createChangelist();
+    $importer = $this->getMockBuilder(ConfigImporter::class)
+      ->disableOriginalConstructor()
+      ->onlyMethods(['getStorageComparer', 'logError'])
+      ->getMock();
+    $importer->method('getStorageComparer')->willReturn($comparer);
+    $importer->expects($this->once())->method('logError');
+    $dispatcher = new EventDispatcher();
+    $dispatcher->addSubscriber($this->container->get('postmark_webhooks.config_import_validator'));
+    $dispatcher->dispatch(new ConfigImporterEvent($importer), ConfigEvents::IMPORT_VALIDATE);
   }
 
 }

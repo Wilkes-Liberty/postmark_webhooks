@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621122: Validate webhook object shape, extracted fields and body size before storage; validate imported suppression settings.
+
 - #3621119: Preserve distinct webhook events and recipients with a versioned event identity.
 - #3621120: Enforce retry deduplication atomically, preserving legacy rows during upgrade and propagating unrelated database failures.
 

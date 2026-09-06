@@ -83,7 +83,14 @@ and restrict database access and backups accordingly.
 
 Retries with the same event identity return **200** without inserting another
 row, including concurrent retries. See the identity contract below.
-Malformed JSON returns **400**. Authentication is checked before parsing.
+Malformed JSON, non-object payloads, missing event type or recipient, conflicting
+recipient fields, invalid identifier types and oversized extracted strings return
+**400** without storing a row. Body reads are limited to 1 MiB; larger bodies
+return **413**. Description and name are limited to 512 Unicode characters.
+Unknown metadata is ignored. Authentication is checked before parsing.
+
+Configuration imports enforce the same numeric limits as the settings form:
+soft-bounce windows 0–365 days, complaint windows and retention 0–3650 days.
 
 ## Known limitations
 

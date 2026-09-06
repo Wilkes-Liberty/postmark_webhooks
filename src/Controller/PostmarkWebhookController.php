@@ -6,6 +6,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
 use Drupal\postmark_webhooks\Event\EventIdentity;
+use Drupal\postmark_webhooks\Event\WebhookPayload;
 use Drupal\Component\Datetime\TimeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Site\Settings;
@@ -60,9 +61,14 @@ class PostmarkWebhookController extends ControllerBase {
       ]);
     }
 
-    $body = $request->getContent();
-    $data = json_decode($body, TRUE);
-    if (!is_array($data)) {
+    $body = stream_get_contents($request->getContent(TRUE), WebhookPayload::MAX_BYTES + 1);
+    if ($body === FALSE || strlen($body) > WebhookPayload::MAX_BYTES) {
+      return new Response('Payload Too Large', 413);
+    }
+    try {
+      $data = WebhookPayload::decode($body);
+    }
+    catch (\JsonException | \InvalidArgumentException $exception) {
       return new Response('Bad Request', 400);
     }
 
