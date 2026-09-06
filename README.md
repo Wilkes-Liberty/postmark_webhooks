@@ -120,7 +120,15 @@ Malformed JSON, non-object payloads, missing event type or recipient, conflictin
 recipient fields, invalid identifier types and oversized extracted strings return
 **400** without storing a row. Body reads are limited to 1 MiB; larger bodies
 return **413**. Description and name are limited to 512 Unicode characters.
-Unknown metadata is ignored. Authentication is checked before parsing.
+Bounce events also require a nonempty `Type` without surrounding whitespace.
+This is the classification used for suppression; rejecting incomplete bounces
+before persistence leaves their provider identity available for a corrected retry.
+Unknown, well-formed bounce types remain log-only for forward compatibility.
+Other record types do not require a bounce type. Unknown metadata is ignored.
+Authentication is checked before parsing.
+Previously accepted incomplete bounces are not repaired automatically: their
+retained identity still counts as a retry, and their missing classification
+cannot be reconstructed from local history.
 
 Configuration imports enforce the same numeric limits as the settings form:
 soft-bounce windows 0–365 days, complaint windows and retention 0–3650 days.

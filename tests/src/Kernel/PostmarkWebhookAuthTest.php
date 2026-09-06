@@ -187,10 +187,20 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
       ['RecordType' => 'SpamComplaint', 'Email' => 'x@example.com', 'ID' => 10],
       ['RecordType' => 'SpamComplaint', 'Email' => 'other@example.com', 'ID' => 10],
       ['RecordType' => 'SpamComplaint', 'Email' => 'x@example.com', 'ID' => 11],
-      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'BouncedAt' => '2026-09-01T00:00:00Z'],
-      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'BouncedAt' => '2026-09-02T00:00:00Z'],
-      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'ServerID' => 2],
-      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'MessageStream' => 'broadcast'],
+      [
+        'RecordType' => 'Bounce',
+        'Type' => 'HardBounce',
+        'Email' => 'x@example.com',
+        'BouncedAt' => '2026-09-01T00:00:00Z',
+      ],
+      [
+        'RecordType' => 'Bounce',
+        'Type' => 'HardBounce',
+        'Email' => 'x@example.com',
+        'BouncedAt' => '2026-09-02T00:00:00Z',
+      ],
+      ['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'x@example.com', 'ServerID' => 2],
+      ['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'x@example.com', 'MessageStream' => 'broadcast'],
     ];
     foreach ($events as $event) {
       $body = json_encode($event + ['MessageID' => 'shared-message']);
@@ -206,7 +216,7 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
    */
   public function testMissingMessageIdRetries(): void {
     $this->setSecret(self::SECRET);
-    $body = json_encode(['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'ID' => 42]);
+    $body = json_encode(['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'x@example.com', 'ID' => 42]);
     $this->receive($this->request(self::SECRET, $body));
     $this->receive($this->request(self::SECRET, $body));
     $this->assertSame(1, $this->eventCount());
@@ -319,7 +329,7 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
    */
   public function testPayloadValidation(): void {
     $this->setSecret(self::SECRET);
-    $base = ['RecordType' => 'Bounce', 'Email' => 'x@example.com'];
+    $base = ['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'x@example.com'];
     $invalid = ['[]', '{}', 'null', '42', '"text"', '[{}]'];
     foreach ([
       ['RecordType' => NULL], ['RecordType' => []], ['RecordType' => ''],
@@ -351,6 +361,45 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
     $valid['Metadata'] = $metadata;
     $this->assertSame(200, $this->receive($this->request(self::SECRET, json_encode($valid)))->getStatusCode());
     $this->assertSame(1, $this->eventCount());
+  }
+
+  /**
+   * An incomplete bounce must not consume the identity of a corrected retry.
+   */
+  public function testIncompleteBounceDoesNotClaimIdentity(): void {
+    $this->setSecret(self::SECRET);
+    $base = ['RecordType' => 'Bounce', 'Email' => 'retry@example.com', 'ID' => 987];
+    $policy = $this->container->get('postmark_webhooks.suppression_policy');
+    foreach ([[], ['Type' => ''], ['Type' => ' '], ['Type' => ' HardBounce'], ['Type' => "HardBounce\t"]] as $type) {
+      $body = json_encode($type + $base);
+      $this->assertSame(400, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+      $this->assertSame(0, $this->eventCount());
+      $this->assertFalse($policy->decide('retry@example.com')->suppressed);
+    }
+    $body = json_encode(['Type' => 'HardBounce'] + $base);
+    for ($retry = 0; $retry < 2; $retry++) {
+      $this->assertSame(200, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+    }
+    $this->assertSame(1, $this->eventCount());
+    $this->assertSame('hard:HardBounce', $policy->decide('retry@example.com')->reason);
+    $this->assertTrue($policy->decide('retry@example.com')->suppressed);
+  }
+
+  /**
+   * Future types remain log-only; other events need no bounce type.
+   */
+  public function testBounceTypeForwardCompatibility(): void {
+    $this->setSecret(self::SECRET);
+    foreach ([
+      ['RecordType' => 'Bounce', 'Type' => 'FutureBounce'],
+      ['RecordType' => 'Delivery'],
+      ['RecordType' => 'FutureEvent'],
+    ] as $event) {
+      $body = json_encode($event + ['Recipient' => 'future@example.com', 'ID' => 321]);
+      $this->assertSame(200, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+    }
+    $this->assertSame(3, $this->eventCount());
+    $this->assertFalse($this->container->get('postmark_webhooks.suppression_policy')->decide('future@example.com')->suppressed);
   }
 
   /**
