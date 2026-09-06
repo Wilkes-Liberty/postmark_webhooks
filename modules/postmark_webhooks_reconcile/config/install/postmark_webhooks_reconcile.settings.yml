@@ -1,0 +1,7 @@
+enabled: false
+lookback_days: 1
+interval_seconds: 86400
+dates_per_run: 1
+report_retention_seconds: 604800
+alert_cooldown_seconds: 3600
+sources: []

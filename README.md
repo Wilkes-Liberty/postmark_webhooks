@@ -437,6 +437,18 @@ dumps or tokens, and makes no suppression changes. Reviews expire after 24 hours
 cron removes expired metadata in batches of 250. CLI access is privileged host
 access and should be limited to authorized operators.
 
+Scheduled drift previews are opt-in and documented in
+[docs/reconciliation.md](docs/reconciliation.md). They compare provider dumps
+with local evidence on a configurable cadence, store count-only reports, and
+never apply imports or change provider lists. Enable them on the settings form
+or in `postmark_webhooks_reconcile.settings` after listing sources and keeping
+tokens in `settings.php`:
+
+```sh
+drush postmark-webhooks:reconcile-scan --format=json
+drush postmark-webhooks:reconcile-drift --format=json
+```
+
 Responses are bounded to 4 MiB and 10000 records per date. An oversized day is
 refused without partial import; it requires a separately reviewed migration
 approach. Rate-limit and provider errors preserve the checkpoint and omit remote
@@ -484,8 +496,9 @@ See [docs/integration-verification.md](docs/integration-verification.md),
 [docs/database-verification.md](docs/database-verification.md),
 [docs/published-package-verification.md](docs/published-package-verification.md),
 [docs/installation-upgrade.md](docs/installation-upgrade.md),
-[docs/public-api.md](docs/public-api.md) and
-[docs/health.md](docs/health.md).
+[docs/public-api.md](docs/public-api.md),
+[docs/health.md](docs/health.md) and
+[docs/reconciliation.md](docs/reconciliation.md).
 
 HTTP coverage includes settings permissions, secret exclusion, Basic Auth and
 retry handling through the real route. Routing-context tests cover root,

@@ -1,6 +1,6 @@
 name: Postmark Webhooks Reconciliation
 type: module
-description: Optional read-only provider reconciliation with reviewed local imports.
+description: Optional read-only provider reconciliation with reviewed local imports and scheduled drift reports.
 package: Mail
 core_version_requirement: ^10.3 || ^11
 dependencies:

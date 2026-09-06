@@ -5,3 +5,14 @@ services:
   postmark_webhooks_reconcile.reconciliation:
     class: Drupal\postmark_webhooks_reconcile\Reconciliation
     arguments: ['@database', '@postmark_webhooks_reconcile.reader', '@postmark_webhooks.suppression_store', '@datetime.time']
+  postmark_webhooks_reconcile.schedule:
+    class: Drupal\postmark_webhooks_reconcile\ScheduledReconciliation
+    arguments:
+      - '@postmark_webhooks_reconcile.reconciliation'
+      - '@database'
+      - '@config.factory'
+      - '@state'
+      - '@lock'
+      - '@module_handler'
+      - '@logger.factory'
+      - '@datetime.time'

@@ -26,5 +26,39 @@ function postmark_webhooks_reconcile_schema(): array {
       'primary key' => ['job_id'],
       'indexes' => ['created' => ['created']],
     ],
+    'postmark_drift_report' => [
+      'description' => 'Privacy-safe scheduled reconciliation drift summaries, without dumps or recipients.',
+      'fields' => [
+        'report_id' => ['type' => 'varchar', 'length' => 32, 'not null' => TRUE],
+        'server_id' => ['type' => 'varchar', 'length' => 20, 'not null' => TRUE],
+        'message_stream' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE],
+        'source_date' => ['type' => 'varchar', 'length' => 10, 'not null' => TRUE],
+        'created' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+        'status' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE],
+        'incomplete_reason' => ['type' => 'varchar', 'length' => 32, 'not null' => TRUE, 'default' => ''],
+        'new_evidence' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+        'newer_evidence' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+        'unchanged_or_older' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+        'provider_total' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+        'digest' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE, 'default' => ''],
+        'reasons' => ['type' => 'text', 'not null' => TRUE, 'size' => 'normal'],
+      ],
+      'primary key' => ['report_id'],
+      'indexes' => [
+        'created' => ['created'],
+        'source_date' => ['server_id', 'message_stream', 'source_date'],
+      ],
+    ],
   ];
+}
+
+/**
+ * Adds scheduled drift report storage for existing reconciliation installs.
+ */
+function postmark_webhooks_reconcile_update_10001(): void {
+  $schema = drupal_get_module_schema('postmark_webhooks_reconcile', 'postmark_drift_report');
+  $database = \Drupal::database();
+  if (!$database->schema()->tableExists('postmark_drift_report')) {
+    $database->schema()->createTable('postmark_drift_report', $schema);
+  }
 }

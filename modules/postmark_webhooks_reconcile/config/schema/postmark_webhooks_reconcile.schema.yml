@@ -1,0 +1,54 @@
+postmark_webhooks_reconcile.settings:
+  type: config_object
+  label: 'Postmark Webhooks scheduled reconciliation'
+  mapping:
+    enabled:
+      type: boolean
+      label: 'Enable scheduled read-only drift previews'
+    lookback_days:
+      type: integer
+      label: 'Completed UTC days to scan'
+      constraints:
+        Range:
+          min: 1
+          max: 30
+    interval_seconds:
+      type: integer
+      label: 'Minimum seconds between completed windows'
+      constraints:
+        Range:
+          min: 0
+          max: 604800
+    dates_per_run:
+      type: integer
+      label: 'Dates scanned per cron run per source'
+      constraints:
+        Range:
+          min: 1
+          max: 7
+    report_retention_seconds:
+      type: integer
+      label: 'Drift report retention (seconds; 0 = keep)'
+      constraints:
+        Range:
+          min: 0
+          max: 31536000
+    alert_cooldown_seconds:
+      type: integer
+      label: 'Repeated drift-hook cooldown (seconds; 0 = only on change)'
+      constraints:
+        Range:
+          min: 0
+          max: 604800
+    sources:
+      type: sequence
+      label: 'Sources to scan'
+      sequence:
+        type: mapping
+        mapping:
+          server_id:
+            type: string
+            label: 'Postmark server ID'
+          message_stream:
+            type: string
+            label: 'Postmark message stream'

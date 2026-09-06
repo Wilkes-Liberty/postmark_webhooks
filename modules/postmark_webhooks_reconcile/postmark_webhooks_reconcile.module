@@ -2,12 +2,165 @@
 
 /**
  * @file
- * Cleanup for optional read-only provider reconciliation.
+ * Optional read-only provider reconciliation and scheduled drift reports.
  */
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\postmark_webhooks\Source\SourceContext;
 
 /**
  * Implements hook_cron().
  */
 function postmark_webhooks_reconcile_cron(): void {
-  \Drupal::service('postmark_webhooks_reconcile.reconciliation')->prune();
+  try {
+    \Drupal::service('postmark_webhooks_reconcile.reconciliation')->prune();
+  }
+  catch (\Throwable $exception) {
+    \Drupal::logger('postmark_webhooks')->error('Reconciliation review cleanup failed during cron: @message', [
+      '@message' => $exception->getMessage(),
+    ]);
+  }
+  try {
+    \Drupal::service('postmark_webhooks_reconcile.schedule')->run();
+  }
+  catch (\Throwable $exception) {
+    \Drupal::logger('postmark_webhooks')->error('Scheduled reconciliation failed during cron: @message', [
+      '@message' => $exception->getMessage(),
+    ]);
+  }
+  try {
+    \Drupal::service('postmark_webhooks_reconcile.schedule')->prune();
+  }
+  catch (\Throwable $exception) {
+    \Drupal::logger('postmark_webhooks')->error('Drift report cleanup failed during cron: @message', [
+      '@message' => $exception->getMessage(),
+    ]);
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function postmark_webhooks_reconcile_form_postmark_webhooks_settings_form_alter(array &$form, FormStateInterface $form_state): void {
+  $config = \Drupal::config('postmark_webhooks_reconcile.settings');
+  $lines = [];
+  foreach ($config->get('sources') ?? [] as $source) {
+    if (is_array($source) && isset($source['server_id'], $source['message_stream'])) {
+      $lines[] = $source['server_id'] . ' ' . $source['message_stream'];
+    }
+  }
+  $form['reconciliation'] = [
+    '#type' => 'details',
+    '#title' => t('Scheduled reconciliation'),
+    '#open' => FALSE,
+    '#tree' => TRUE,
+  ];
+  $form['reconciliation']['enabled'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Enable scheduled read-only drift previews'),
+    '#description' => t('Off by default. Cron compares provider dumps with local evidence and stores reports. It never applies imports, removes local suppression, or changes provider lists. Tokens stay in settings.php.'),
+    '#default_value' => (bool) ($config->get('enabled') ?? FALSE),
+  ];
+  $form['reconciliation']['lookback_days'] = [
+    '#type' => 'number',
+    '#title' => t('Completed UTC days to scan'),
+    '#description' => t('Yesterday back through this many days. Today is never scanned because the provider day is still open.'),
+    '#default_value' => $config->get('lookback_days') ?? 1,
+    '#min' => 1,
+    '#max' => 30,
+  ];
+  $form['reconciliation']['interval_seconds'] = [
+    '#type' => 'number',
+    '#title' => t('Minimum seconds between completed windows'),
+    '#default_value' => $config->get('interval_seconds') ?? 86400,
+    '#min' => 0,
+    '#max' => 604800,
+  ];
+  $form['reconciliation']['dates_per_run'] = [
+    '#type' => 'number',
+    '#title' => t('Dates scanned per cron run per source'),
+    '#description' => t('Each date is one provider dump. Interrupted windows resume from the stored cursor.'),
+    '#default_value' => $config->get('dates_per_run') ?? 1,
+    '#min' => 1,
+    '#max' => 7,
+  ];
+  $form['reconciliation']['report_retention_seconds'] = [
+    '#type' => 'number',
+    '#title' => t('Drift report retention (seconds)'),
+    '#description' => t('0 keeps reports. Cron deletes expired rows in batches of 250. Suppression evidence is not deleted.'),
+    '#default_value' => $config->get('report_retention_seconds') ?? 604800,
+    '#min' => 0,
+    '#max' => 31536000,
+  ];
+  $form['reconciliation']['alert_cooldown_seconds'] = [
+    '#type' => 'number',
+    '#title' => t('Drift notification cooldown (seconds)'),
+    '#description' => t('Repeated identical drift hooks wait this long. 0 emits only when the digest changes. This module does not send mail.'),
+    '#default_value' => $config->get('alert_cooldown_seconds') ?? 3600,
+    '#min' => 0,
+    '#max' => 604800,
+  ];
+  $form['reconciliation']['sources'] = [
+    '#type' => 'textarea',
+    '#title' => t('Sources to scan'),
+    '#description' => t('One source per line as server ID, then a space, then the message stream. Example: 123 outbound. Missing tokens skip that date as incomplete credentials.'),
+    '#default_value' => implode("\n", $lines),
+    '#rows' => 4,
+  ];
+  $form['#validate'][] = 'postmark_webhooks_reconcile_settings_validate';
+  $form['#submit'][] = 'postmark_webhooks_reconcile_settings_submit';
+}
+
+/**
+ * Validates scheduled source lines.
+ */
+function postmark_webhooks_reconcile_settings_validate(array &$form, FormStateInterface $form_state): void {
+  $raw = (string) ($form_state->getValue(['reconciliation', 'sources']) ?? '');
+  foreach (preg_split('/\R/', $raw) ?: [] as $index => $line) {
+    $line = trim($line);
+    if ($line === '') {
+      continue;
+    }
+    $parts = preg_split('/\s+/', $line, 2) ?: [];
+    if (count($parts) !== 2) {
+      $form_state->setError($form['reconciliation']['sources'], t('Each source line must be a server ID and message stream.'));
+      return;
+    }
+    try {
+      new SourceContext($parts[0], $parts[1]);
+    }
+    catch (\InvalidArgumentException $exception) {
+      $form_state->setError($form['reconciliation']['sources'], t('Source line @line is not a valid server and stream.', [
+        '@line' => (string) ($index + 1),
+      ]));
+      return;
+    }
+  }
+}
+
+/**
+ * Saves scheduled reconciliation settings.
+ */
+function postmark_webhooks_reconcile_settings_submit(array &$form, FormStateInterface $form_state): void {
+  $values = $form_state->getValue('reconciliation') ?? [];
+  $sources = [];
+  foreach (preg_split('/\R/', (string) ($values['sources'] ?? '')) ?: [] as $line) {
+    $line = trim($line);
+    if ($line === '') {
+      continue;
+    }
+    $parts = preg_split('/\s+/', $line, 2) ?: [];
+    if (count($parts) === 2) {
+      $sources[] = ['server_id' => $parts[0], 'message_stream' => $parts[1]];
+    }
+  }
+  \Drupal::configFactory()->getEditable('postmark_webhooks_reconcile.settings')
+    ->set('enabled', (bool) ($values['enabled'] ?? FALSE))
+    ->set('lookback_days', (int) ($values['lookback_days'] ?? 1))
+    ->set('interval_seconds', (int) ($values['interval_seconds'] ?? 86400))
+    ->set('dates_per_run', (int) ($values['dates_per_run'] ?? 1))
+    ->set('report_retention_seconds', (int) ($values['report_retention_seconds'] ?? 604800))
+    ->set('alert_cooldown_seconds', (int) ($values['alert_cooldown_seconds'] ?? 3600))
+    ->set('sources', $sources)
+    ->save();
 }

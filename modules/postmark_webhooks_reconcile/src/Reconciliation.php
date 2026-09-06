@@ -28,6 +28,31 @@ final class Reconciliation {
    * Saves only review metadata; never applies suppression or persists the dump.
    */
   public function preview(SourceContext $source, string $date): array {
+    $comparison = $this->compare($source, $date);
+    $job = [
+      'job_id' => bin2hex(random_bytes(16)),
+      'server_id' => $source->serverId,
+      'message_stream' => $source->messageStream,
+      'source_date' => $date,
+      'digest' => $comparison['digest'],
+      'position' => 0,
+      'total' => $comparison['provider_total'],
+      'created' => $this->time->getCurrentTime(),
+      'status' => 'reviewed',
+    ];
+    $this->database->insert('postmark_reconciliation')->fields($job)->execute();
+    return $job + [
+      'differences' => $comparison['differences'],
+      'reasons' => $comparison['reasons'],
+      'local_suppression_changed' => FALSE,
+      'provider_writes' => FALSE,
+    ];
+  }
+
+  /**
+   * Compares one date-filtered dump with local evidence and does not persist.
+   */
+  public function compare(SourceContext $source, string $date): array {
     $events = $this->reader->dump($source, $date);
     $differences = ['new_evidence' => 0, 'newer_evidence' => 0, 'unchanged_or_older' => 0];
     $reasons = [];
@@ -50,23 +75,19 @@ final class Reconciliation {
       $difference = !$current ? 'new_evidence' : ($newer ? 'newer_evidence' : 'unchanged_or_older');
       $differences[$difference]++;
     }
-    $job = [
-      'job_id' => bin2hex(random_bytes(16)),
+    return [
       'server_id' => $source->serverId,
       'message_stream' => $source->messageStream,
       'source_date' => $date,
       'digest' => $this->digest($events),
-      'position' => 0,
-      'total' => count($events),
-      'created' => $this->time->getCurrentTime(),
-      'status' => 'reviewed',
-    ];
-    $this->database->insert('postmark_reconciliation')->fields($job)->execute();
-    return $job + [
+      'provider_total' => count($events),
+      'status' => $events === [] ? 'empty' : 'complete',
+      'incomplete_reason' => '',
       'differences' => $differences,
       'reasons' => $reasons,
       'local_suppression_changed' => FALSE,
       'provider_writes' => FALSE,
+      'absence_clears_local' => FALSE,
     ];
   }
 

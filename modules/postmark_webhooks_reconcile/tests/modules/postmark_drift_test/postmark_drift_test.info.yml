@@ -1,0 +1,7 @@
+name: Postmark drift test
+type: module
+description: Captures scheduled drift report hooks for kernel tests.
+package: Testing
+core_version_requirement: ^10.3 || ^11
+dependencies:
+  - postmark_webhooks:postmark_webhooks_reconcile
