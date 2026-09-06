@@ -1,129 +1,5 @@
 # Postmark Webhooks
 
-## Optional read-only provider reconciliation
-
-Enable `postmark_webhooks_reconcile` only if operators need to recover missed
-suppression evidence. The core receiver does not require an API token. Configure
-server tokens outside exported configuration, for example in settings.php:
-
-```php
-$settings['postmark_webhooks.reconciliation_tokens'] = [
-  '123' => getenv('POSTMARK_SERVER_TOKEN'),
-];
-```
-
-The reader uses only Postmark's documented `GET /server` and suppression-dump
-endpoints. It verifies the token's server ID, honors the intake source allowlist,
-requires TLS validation and disables redirects. It never creates, deletes or
-reactivates anything at Postmark. Only current provider suppression evidence is
-imported locally; this is not a replay of historical delivery events.
-
-Postmark documents inclusive date filters but no offset pagination for the dump.
-Preview one date at a time, inspect the aggregate evidence differences, then apply
-the returned review identifier:
-
-```sh
-drush postmark-webhooks:reconcile-preview 123 outbound 2026-09-01
-drush postmark-webhooks:reconcile-apply REVIEW_ID
-drush postmark-webhooks:reconcile-status REVIEW_ID
-```
-
-Each apply call processes at most 250 local records. Repeat it until status is
-`complete`. The checkpoint and suppression updates commit together; interrupted
-pages can be retried. Every apply fetches the provider dump again and requires its
-canonical digest to match the reviewed data. Changed data requires a fresh
-preview. Preview stores only source/date/digest/progress metadata, not recipient
-dumps or tokens, and makes no suppression changes. Reviews expire after 24 hours;
-cron removes expired metadata in batches of 250. CLI access is privileged host
-access and should be limited to authorized operators.
-
-Responses are bounded to 4 MiB and 10000 records per date. An oversized day is
-refused without partial import; it requires a separately reviewed migration
-approach. Rate-limit and provider errors preserve the checkpoint and omit remote
-body content. Imported records use the same ordered state service as live intake,
-so stale hard bounces cannot override newer releases and absent provider rows do
-not clear local consent, complaint or suppression evidence.
-
-API references: [suppression dump](https://postmarkapp.com/developer/api/suppressions-api)
-and [server identity](https://postmarkapp.com/developer/api/server-api).
-
-## Recipient privacy controls
-
-The Reports menu has separate export and history-erasure forms. Grant
-`export postmark recipient data` and `erase postmark recipient history` only to
-operators authorized for those actions; neither permission grants the other.
-Exports stream normalized event history and minimal current suppression as a JSON
-attachment, in database pages of 250 rows. The export request is audited. Its
-event boundary excludes later intake; current suppression can change while an
-export is streamed. Protect downloaded files as recipient data.
-
-History erasure requires confirmation and processes at most 250 rows per batch.
-Each completed deletion batch commits with its audit record. An interrupted
-operation can be reviewed and retried. Events received after the confirmation
-snapshot remain for a later review.
-
-Erasure deliberately retains the normalized mailbox, source, reason, evidence
-digest and occurrence/time basis needed to prevent unwanted mail. It also retains
-operator audit records. Deleting history must not silently restore consent or
-reactivate delivery. Operators must account separately for backups, provider
-records, exports and site-specific retention policy; this control does not claim
-irreversible erasure of external copies.
-
-New intake stores no provider description or raw body. Update 10006 removes those
-legacy fields in restartable batches without changing normalized history or
-suppression state. The export excludes those fields even before that update runs.
-
-## Suppression inspector and recovery
-
-The Reports menu includes an exact-address suppression inspector. Grant
-`view postmark suppression` to trusted operators who need the effective decision,
-expiry, and up to 50 durable records and 50 recent events. The view omits raw
-payloads, descriptions and provider message identifiers. Addresses are submitted
-in a form, not placed in lookup URLs.
-
-Grant `recover postmark hard bounces` separately to operators allowed to confirm
-that a mailbox problem is repaired. Recovery releases only HardBounce and
-BadEmailAddress evidence for a known recipient/server/stream pair. Other sources,
-complaints, manual suppressions and unsubscribe records remain protected. Unknown
-sources, changed evidence and already released records are refused. No provider
-setting is changed and no mail is sent.
-
-The release and audit record commit together. The audit records actor, time,
-action, target evidence key and a keyed recipient reference; it stores no raw
-mailbox or free-text notes. These references are pseudonymous, not anonymous.
-Audit records are retained independently of event-history cleanup. Run database
-updates for the audit table introduced by update 10005.
-
-## Policy preview and diagnostics
-
-The settings page links to a read-only policy preview. Select the real mail path
-and optionally provide a trusted sending server/stream pair. It reports whether
-this module would block the message, the policy reason and expiry. It sends no
-mail and changes no consent or suppression evidence. Disabled suppression never
-appears as an enforced block; an unsupported mail path is identified explicitly.
-An allowed result does not guarantee provider acceptance or delivery.
-
-Drush 13 discovers the commands automatically. Use `--format=json` for structured
-output, for example:
-
-```sh
-drush postmark-webhooks:status recipient@example.com --format=json
-drush postmark-webhooks:status recipient@example.com --mail-path=mailer_plus --server-id=123 --message-stream=outbound --format=json
-drush postmark-webhooks:diagnostics --format=json
-```
-
-Diagnostics expose credential readiness, known adapter coverage, and aggregate
-accepted, duplicate and authenticated-rejection counts with last-seen timestamps.
-The counters begin at installation of update 10004; they do not reconstruct past
-traffic. Successful event storage and its accepted counter commit together.
-Counters survive history retention and contain no mailbox, message or secret
-labels. Rejection counters are best-effort during database outages, so malformed requests
-still receive their deterministic client error. Rejections cover authenticated
-payload/source errors, not authentication
-failures, upstream proxy errors or database outages; use infrastructure logs for
-those. The settings page and preview require the existing administration
-permission. Run database updates when upgrading.
-
 Receives Postmark bounce, spam, and delivery webhooks and suppresses outbound
 Drupal mail to addresses that bounced or complained. This module does not send
 mail. Pair it with [Postmark](https://www.drupal.org/project/postmark) or another
@@ -131,6 +7,11 @@ mail backend that uses Drupal's mail manager.
 
 Requires PHP 8.3 or later and Drupal 10.3 or 11. The module appears in the
 **Chronicle** package group on the Extend page.
+
+Installation, alpha1 upgrades, interruption recovery and restore-based rollback
+are in [docs/installation-upgrade.md](docs/installation-upgrade.md). Keep using
+`composer require drupal/postmark_webhooks:^1.0@alpha` until a stable 1.0.0
+package is published.
 
 ## Installation and configuration
 
@@ -147,8 +28,8 @@ $settings['postmark_webhooks.webhook_secret'] = getenv('POSTMARK_WEBHOOK_SECRET'
 ```
 
 The secret is never stored in exported configuration or displayed in the admin
-form. An empty, missing or non-string active secret makes the endpoint return **503** and record
-nothing. Missing or incorrect credentials return **401**.
+form. An empty, missing or non-string active secret makes the endpoint return
+**503** and record nothing. Missing or incorrect credentials return **401**.
 
 To rotate without interrupting requests in flight, deploy the new active secret
 and retain the old one temporarily in settings:
@@ -194,6 +75,19 @@ Configure suppression and retention at
 `/admin/config/services/postmark-webhook`. The required permission is
 `administer postmark webhook settings`.
 
+## Upgrading from 1.0.0-alpha1
+
+Back up the database and `settings.php`, update the package, then run
+`drush updatedb -y` and `drush cache:rebuild`. Updates 10002 and 10006 process
+250 rows per batch and resume if interrupted. There is no supported downgrade:
+roll back by restoring the pre-upgrade dump with the previous package files.
+
+The upgrade preserves retained event rows and backfills durable suppression
+before scrubbing legacy provider descriptions and payloads. History already
+discarded by alpha1 cannot be reconstructed locally. Deleting event history,
+then or later, does not restore consent. Full steps, verification and rollback
+are in [docs/installation-upgrade.md](docs/installation-upgrade.md).
+
 ## Suppression rules
 
 Suppression is enabled by default and runs through `hook_mail_alter()`.
@@ -233,18 +127,21 @@ drush postmark-webhooks:status user@example.com
 
 ## Event storage and retries
 
-The `postmark_events` table stores the receipt time, event type, MessageID,
-recipient, bounce type and description. The reserved `payload` column remains
-NULL: raw webhook JSON is not stored. Treat the event table as personal data
-and restrict database access and backups accordingly.
+The `postmark_events` table stores receipt time, provider occurrence time, event
+type, MessageID, normalized recipient, bounce type, source labels and a
+versioned identity key. New intake stores an empty description and a NULL
+payload: provider free text and raw webhook JSON are not retained. Update 10006
+clears those legacy columns in restartable batches. Treat remaining recipient
+and source fields as personal data and restrict database access and backups.
 
 Retries with the same event identity return **200** without inserting another
 row, including concurrent retries. See the identity contract below.
 Malformed JSON, non-object payloads, missing event type or recipient, conflicting
 recipient fields, invalid identifier types and oversized extracted strings return
 **400** without storing a row. Body reads are limited to 1 MiB; larger bodies
-return **413**. Description and name are limited to 512 Unicode characters.
-Bounce events also require a nonempty `Type` without surrounding whitespace.
+return **413**. Incoming description and name strings are limited to 512 Unicode
+characters during validation and are then discarded. Bounce events also require
+a nonempty `Type` without surrounding whitespace.
 This is the classification used for suppression; rejecting incomplete bounces
 before persistence leaves their provider identity available for a corrected retry.
 Unknown, well-formed bounce types remain log-only for forward compatibility.
@@ -257,56 +154,36 @@ cannot be reconstructed from local history.
 Configuration imports enforce the same numeric limits as the settings form:
 soft-bounce windows 0–365 days, complaint windows and retention 0–3650 days.
 
-## Known limitations
+## Recipient privacy and retained evidence
 
-- Native Mailer Plus sending requires the optional `postmark_webhooks_mailer`
-  adapter described below. Direct Symfony transports outside Drupal Mailer Plus
-  remain outside this integration; callers must use the shared policy themselves.
-- This is an event receiver, not an inbound email parser or mail sender. It
-  The optional reconciliation module imports reviewed suppression evidence; it
-  does not automatically synchronize or alter a provider suppression list.
+The Reports menu has separate export and history-erasure forms. Grant
+`export postmark recipient data` and `erase postmark recipient history` only to
+operators authorized for those actions; neither permission grants the other.
+Exports stream normalized event history and minimal current suppression as a JSON
+attachment, in database pages of 250 rows. The export request is audited. Its
+event boundary excludes later intake; current suppression can change while an
+export is streamed. Protect downloaded files as recipient data.
 
-## Development
+History erasure requires confirmation and processes at most 250 rows per batch.
+Each completed deletion batch commits with its audit record. An interrupted
+operation can be reviewed and retried. Events received after the confirmation
+snapshot remain for a later review.
 
-Use GitHub pull requests in `Wilkes-Liberty/postmark_webhooks` for development,
-CI, review, and merges. Mirror merged commits and authorized release tags
-additively to Drupalcode. Drupal.org remains the canonical issue tracker; keep
-issue numbers in branches, commits, and PR titles. Drupalcode issue forks can
-provide public patch references, but are not a separate merge workflow.
+Erasure deletes event history. It does not restore consent and does not
+reactivate delivery. It deliberately retains the normalized mailbox, source,
+reason, evidence digest and occurrence/time basis in `postmark_suppression`
+that are needed to prevent unwanted mail. Operator audit records are also
+retained: action, target, HMAC subject, uid and time, with no raw mailbox or
+free-text notes. Those references are pseudonymous, not anonymous, and survive
+event-history cleanup.
 
-From a Drupal checkout with this module installed and development dependencies:
+Operators must account separately for backups, provider records, exports and
+site-specific retention policy; this control does not claim irreversible erasure
+of external copies.
 
-```sh
-vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install web/modules/contrib/postmark_webhooks
-SIMPLETEST_BASE_URL=http://127.0.0.1:8888 SIMPLETEST_DB=pgsql://user:password@localhost/database vendor/bin/phpunit -c web/core web/modules/contrib/postmark_webhooks/tests
-```
-
-For HTTP tests, start a disposable site server from the Drupal web root with
-`PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8888 -t . .ht.router.php`. CI runs
-this server and the full suite on Drupal 10.6, 11.3 and 11.4 with PostgreSQL 16,
-plus an isolated Drupal 10.3 compatibility-floor job. MySQL 8.4, MariaDB 10.11
-and SQLite run the same suite on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5.
-See [docs/integration-verification.md](docs/integration-verification.md),
-[docs/database-verification.md](docs/database-verification.md) and
-[docs/published-package-verification.md](docs/published-package-verification.md).
-
-HTTP coverage includes settings permissions, secret exclusion, Basic Auth and
-retry handling through the real route. Routing-context tests cover root,
-subdirectory and trusted proxy URL generation. A separate installed-site HTTP
-fixture verifies actual subdirectory Basic Auth, idempotent intake, authenticated
-settings and prefixed preview links. Drush commands are discovered on an installed
-site, and the optional mailer/reconciliation integrations have their own CI steps.
-Kernel coverage includes authentication, missing secret, malformed JSON,
-event identity, concurrent retries, legacy upgrades, unrelated database failures,
-NULL payload, retention and case-insensitive suppression.
-
-## Support and license
-
-Report issues in the [Drupal.org issue queue](https://www.drupal.org/project/issues/postmark_webhooks).
-Source: [git.drupalcode.org](https://git.drupalcode.org/project/postmark_webhooks).
-
-Maintainer: Jeremy Michael Cerda. Sponsor: [Wilkes & Liberty, LLC](https://wilkesliberty.com).
-Licensed under GPL-2.0-or-later; see [LICENSE.txt](LICENSE.txt).
+New intake stores no provider description or raw body. Update 10006 removes those
+legacy fields in restartable batches without changing normalized history or
+suppression state. The export excludes those fields even before that update runs.
 
 ## Event identity and retries
 
@@ -324,12 +201,11 @@ fallback fields cannot distinguish a new event from a retry. Source fields in
 this key distinguish records; they are not authenticated source-policy controls.
 Retry deduplication lasts while the event row is retained.
 
-Run database updates when upgrading from alpha1. The upgrade preserves all legacy
-rows, including duplicates, with a NULL identity key because alpha1 did not retain
-the identifiers needed to reconstruct reliable identities. A replay of a legacy
-event can therefore add one new keyed row. Events previously discarded by
-message-only deduplication cannot be recovered from the local database.
-
+Alpha1 upgrades preserve all legacy rows, including duplicates, with a NULL
+identity key because alpha1 did not retain the identifiers needed to reconstruct
+reliable identities. A replay of a legacy event can therefore add one new keyed
+row. Events previously discarded by message-only deduplication cannot be recovered
+from the local database.
 
 ## Suppression service and occurrence time
 
@@ -358,11 +234,11 @@ and explicitly reported with the `clamped` time basis.
 Older events cannot replace newer state. Equal times use the identity digest as
 a deterministic tie breaker. Policy results identify the time basis used.
 
-Run database updates after upgrading. Durable-state migration processes retained
-history in batches of 250 and normalizes legacy recipients. It cannot reconstruct
-events already discarded or purged by alpha1. Event insertion and suppression
-updates commit together. Source fields support the explicit policy mappings
-described below; the default remains site-wide.
+Durable-state migration processes retained history in batches of 250 and
+normalizes legacy recipients. It cannot reconstruct events already discarded or
+purged by alpha1. Event insertion and suppression updates commit together. Source
+fields support the explicit policy mappings described below; the default remains
+site-wide.
 
 ## Source policies
 
@@ -433,10 +309,59 @@ origin in addition to existing extracted fields, never raw JSON. Subscription
 identity version 2 includes transition state so equal-time changes remain distinct.
 Other event identities are unchanged.
 
-Run database updates. Existing SubscriptionChange rows gain nullable transition
-fields; prior versions discarded the details needed to reconstruct their state.
-They remain history-only. A valid replay uses the corrected identity contract;
+Existing SubscriptionChange rows gain nullable transition fields during upgrade;
+prior versions discarded the details needed to reconstruct their state. They
+remain history-only. A valid replay uses the corrected identity contract;
 reconciliation is required for unavailable provider history.
+
+## Suppression inspector and recovery
+
+The Reports menu includes an exact-address suppression inspector. Grant
+`view postmark suppression` to trusted operators who need the effective decision,
+expiry, and up to 50 durable records and 50 recent events. The view omits raw
+payloads, descriptions and provider message identifiers. Addresses are submitted
+in a form, not placed in lookup URLs.
+
+Grant `recover postmark hard bounces` separately to operators allowed to confirm
+that a mailbox problem is repaired. Recovery releases only HardBounce and
+BadEmailAddress evidence for a known recipient/server/stream pair. Other sources,
+complaints, manual suppressions and unsubscribe records remain protected. Unknown
+sources, changed evidence and already released records are refused. No provider
+setting is changed and no mail is sent.
+
+The release and audit record commit together. The audit records actor, time,
+action, target evidence key and a keyed recipient reference; it stores no raw
+mailbox or free-text notes. These references are pseudonymous, not anonymous.
+Audit records are retained independently of event-history cleanup.
+
+## Policy preview and diagnostics
+
+The settings page links to a read-only policy preview. Select the real mail path
+and optionally provide a trusted sending server/stream pair. It reports whether
+this module would block the message, the policy reason and expiry. It sends no
+mail and changes no consent or suppression evidence. Disabled suppression never
+appears as an enforced block; an unsupported mail path is identified explicitly.
+An allowed result does not guarantee provider acceptance or delivery.
+
+Drush 13 discovers the commands automatically. Use `--format=json` for structured
+output, for example:
+
+```sh
+drush postmark-webhooks:status recipient@example.com --format=json
+drush postmark-webhooks:status recipient@example.com --mail-path=mailer_plus --server-id=123 --message-stream=outbound --format=json
+drush postmark-webhooks:diagnostics --format=json
+```
+
+Diagnostics expose credential readiness, known adapter coverage, and aggregate
+accepted, duplicate and authenticated-rejection counts with last-seen timestamps.
+The counters begin at installation of update 10004; they do not reconstruct past
+traffic. Successful event storage and its accepted counter commit together.
+Counters survive history retention and contain no mailbox, message or secret
+labels. Rejection counters are best-effort during database outages, so malformed
+requests still receive their deterministic client error. Rejections cover
+authenticated payload/source errors, not authentication failures, upstream proxy
+errors or database outages; use infrastructure logs for those. The settings page
+and preview require the existing administration permission.
 
 ## Optional Mailer Plus adapter
 
@@ -468,3 +393,106 @@ The optional test runner permits only the exact known upstream deprecation
 messages listed in `modules/postmark_webhooks_mailer/tests/upstream-deprecations.json`.
 New messages and functional failures fail the run; upstream notices remain visible
 on PHPUnit 11. This does not disable deprecation checking for the receiver suite.
+
+## Optional read-only provider reconciliation
+
+Enable `postmark_webhooks_reconcile` only if operators need to recover missed
+suppression evidence. The core receiver does not require an API token. Configure
+server tokens outside exported configuration, for example in settings.php:
+
+```php
+$settings['postmark_webhooks.reconciliation_tokens'] = [
+  '123' => getenv('POSTMARK_SERVER_TOKEN'),
+];
+```
+
+The reader uses only Postmark's documented `GET /server` and suppression-dump
+endpoints. It verifies the token's server ID, honors the intake source allowlist,
+requires TLS validation and disables redirects. It never creates, deletes or
+reactivates anything at Postmark. Only current provider suppression evidence is
+imported locally; this is not a replay of historical delivery events.
+
+Postmark documents inclusive date filters but no offset pagination for the dump.
+Preview one date at a time, inspect the aggregate evidence differences, then apply
+the returned review identifier:
+
+```sh
+drush postmark-webhooks:reconcile-preview 123 outbound 2026-09-01
+drush postmark-webhooks:reconcile-apply REVIEW_ID
+drush postmark-webhooks:reconcile-status REVIEW_ID
+```
+
+Each apply call processes at most 250 local records. Repeat it until status is
+`complete`. The checkpoint and suppression updates commit together; interrupted
+pages can be retried. Every apply fetches the provider dump again and requires its
+canonical digest to match the reviewed data. Changed data requires a fresh
+preview. Preview stores only source/date/digest/progress metadata, not recipient
+dumps or tokens, and makes no suppression changes. Reviews expire after 24 hours;
+cron removes expired metadata in batches of 250. CLI access is privileged host
+access and should be limited to authorized operators.
+
+Responses are bounded to 4 MiB and 10000 records per date. An oversized day is
+refused without partial import; it requires a separately reviewed migration
+approach. Rate-limit and provider errors preserve the checkpoint and omit remote
+body content. Imported records use the same ordered state service as live intake,
+so stale hard bounces cannot override newer releases and absent provider rows do
+not clear local consent, complaint or suppression evidence.
+
+API references: [suppression dump](https://postmarkapp.com/developer/api/suppressions-api)
+and [server identity](https://postmarkapp.com/developer/api/server-api).
+
+## Known limitations
+
+- Native Mailer Plus sending requires the optional `postmark_webhooks_mailer`
+  adapter described above. Direct Symfony transports outside Drupal Mailer Plus
+  remain outside this integration; callers must use the shared policy themselves.
+- This is an event receiver, not an inbound email parser or mail sender. The
+  optional reconciliation module imports reviewed suppression evidence; it does
+  not automatically synchronize or alter a provider suppression list.
+- History erasure and event retention do not restore consent or delete durable
+  suppression. Deleting history is not a reactivation.
+- Separate webhook credentials per source are not implemented; accepted
+  credentials share one allowlist.
+
+## Development
+
+Use GitHub pull requests in `Wilkes-Liberty/postmark_webhooks` for development,
+CI, review, and merges. Mirror merged commits and authorized release tags
+additively to Drupalcode. Drupal.org remains the canonical issue tracker; keep
+issue numbers in branches, commits, and PR titles. Drupalcode issue forks can
+provide public patch references, but are not a separate merge workflow.
+
+From a Drupal checkout with this module installed and development dependencies:
+
+```sh
+vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install web/modules/contrib/postmark_webhooks
+SIMPLETEST_BASE_URL=http://127.0.0.1:8888 SIMPLETEST_DB=pgsql://user:password@localhost/database vendor/bin/phpunit -c web/core web/modules/contrib/postmark_webhooks/tests
+```
+
+For HTTP tests, start a disposable site server from the Drupal web root with
+`PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8888 -t . .ht.router.php`. CI runs
+this server and the full suite on Drupal 10.6, 11.3 and 11.4 with PostgreSQL 16,
+plus an isolated Drupal 10.3 compatibility-floor job. MySQL 8.4, MariaDB 10.11
+and SQLite run the same suite on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5.
+See [docs/integration-verification.md](docs/integration-verification.md),
+[docs/database-verification.md](docs/database-verification.md),
+[docs/published-package-verification.md](docs/published-package-verification.md)
+and [docs/installation-upgrade.md](docs/installation-upgrade.md).
+
+HTTP coverage includes settings permissions, secret exclusion, Basic Auth and
+retry handling through the real route. Routing-context tests cover root,
+subdirectory and trusted proxy URL generation. A separate installed-site HTTP
+fixture verifies actual subdirectory Basic Auth, idempotent intake, authenticated
+settings and prefixed preview links. Drush commands are discovered on an installed
+site, and the optional mailer/reconciliation integrations have their own CI steps.
+Kernel coverage includes authentication, missing secret, malformed JSON,
+event identity, concurrent retries, legacy upgrades, unrelated database failures,
+NULL payload, retention and case-insensitive suppression.
+
+## Support and license
+
+Report issues in the [Drupal.org issue queue](https://www.drupal.org/project/issues/postmark_webhooks).
+Source: [git.drupalcode.org](https://git.drupalcode.org/project/postmark_webhooks).
+
+Maintainer: Jeremy Michael Cerda. Sponsor: [Wilkes & Liberty, LLC](https://wilkesliberty.com).
+Licensed under GPL-2.0-or-later; see [LICENSE.txt](LICENSE.txt).

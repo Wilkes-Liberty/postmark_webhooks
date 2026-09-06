@@ -1,12 +1,12 @@
 <p>Postmark Webhooks receives bounce, spam complaint and delivery notifications from Postmark and suppresses outbound Drupal mail to addresses that bounced or complained. It does not send mail; pair it with the <a href="https://www.drupal.org/project/postmark">Postmark module</a> or another backend using Drupal's mail manager.</p>
 <h3 id="module-project--features">Features</h3>
 <ul>
-<li>HTTP Basic Auth with a timing-safe password comparison. An unconfigured endpoint returns 503; missing or incorrect credentials return 401.</li>
-<li>Hard-bounce suppression without a time window, soft-bounce suppression for 30 days by default, and configurable spam-complaint windows.</li>
-<li>Case-insensitive recipient matching, MessageID retry acknowledgement, and mailbox-redacted watchdog messages.</li>
-<li>Event history with no raw JSON payload storage and configurable cron retention, defaulting to 90 days.</li>
-<li>Settings form and <code>drush postmark-webhooks:status user@example.com</code>.</li>
-<li>Listed in the Chronicle package group on Drupal's Extend page.</li>
+<li>HTTP Basic Auth with a timing-safe password comparison. An unconfigured endpoint returns 503; missing or incorrect credentials return 401. The webhook secret lives in settings.php, never in exported configuration.</li>
+<li>Hard-bounce suppression without a time window, soft-bounce suppression for 30 days by default, and configurable spam-complaint windows. Durable per-recipient evidence survives event-history retention.</li>
+<li>Case-insensitive matching of every To, Cc and Bcc recipient, versioned retry identity, and mailbox-redacted watchdog messages.</li>
+<li>Event history without provider descriptions or raw JSON payloads, with configurable cron retention defaulting to 90 days.</li>
+<li>Settings form, policy preview, suppression inspector, audited recipient export/erasure, and <code>drush postmark-webhooks:status user@example.com</code>.</li>
+<li>Optional Mailer Plus adapter and optional read-only provider reconciliation. Listed in the Chronicle package group on Drupal's Extend page.</li>
 </ul>
 <h3 id="module-project--post-installation">Post-installation</h3>
 <p>Install with <code>composer require drupal/postmark_webhooks:^1.0@alpha</code> and enable Postmark Webhooks. Put the secret in settings.php, not exported configuration:</p>
@@ -14,17 +14,17 @@
 <p>In your Postmark server's message stream, configure bounce, spam complaint and delivery webhooks using <code>https://postmark:URL_ENCODED_SECRET@example.com/api/webhooks/postmark</code>. Replace the example host and encoded password. Postmark sends the password through HTTP Basic Auth; the admin UI never displays it.</p>
 <p>Use HTTPS and an edge IP allowlist using <a href="https://postmarkapp.com/support/article/800-ips-for-firewalls#webhooks">Postmark's current webhook IP addresses</a>. Preserve the Authorization header through proxies. Postmark does not provide X-Postmark-Signature or HMAC signatures; see its <a href="https://postmarkapp.com/developer/webhooks/webhooks-overview">webhook documentation</a>.</p>
 <p>Visit <code>/admin/config/services/postmark-webhook</code> to configure suppression and retention. HardBounce, BadEmailAddress, ManuallyDeactivated and Unsubscribe bounce types suppress without a time window. Transient, SoftBounce, DnsError, MailboxFull and MessageTooLarge use the soft-bounce window (0 disables it). SpamComplaint and SpamNotification use the complaint window (0 means no time limit). Delivery, Open, Click, Subscribe and unknown events are log-only.</p>
+<p>Sites upgrading from 1.0.0-alpha1 must run database updates, including restartable 250-row batches. Back up first. There is no supported downgrade; restore the pre-upgrade dump with the previous package files. History erasure does not restore consent or reactivate delivery.</p>
 <h3 id="module-project--additional-requirements">Requirements</h3>
 <p>PHP 8.3 or later, Drupal 10.3 or 11, and a Postmark account configured to send webhooks. No mail-sending module is required merely to receive events.</p>
 <h3 id="module-project--similar-projects">Similar projects</h3>
 <p><a href="https://www.drupal.org/project/postmark">Postmark</a> provides outbound sending. Postmark Webhooks provides receiving and Drupal-side suppression. <a href="https://www.drupal.org/project/mailsystem">Mail System</a> can select a backend that uses Drupal's mail manager.</p>
 <h3>Known limitations</h3>
 <ul>
-<li>Native Symfony Mailer transports can bypass hook_mail_alter and are not suppressed. This release has no Symfony Mailer event subscriber.</li>
-<li>Retention deletes hard bounces and complaints too. A purged event cannot suppress mail, even when its suppression window is called permanent. Set retention to 0 to keep history indefinitely.</li>
-<li>MessageID deduplication is global across event types and covers sequential retries. Later events with an already recorded MessageID are ignored; concurrent retries have no unique database constraint.</li>
-<li>Suppression handles one recipient, optionally with a display name. Multi-recipient To, Cc and Bcc lists are not individually filtered.</li>
-<li>This is not an inbound email parser and does not synchronize Postmark's server-side suppression list.</li>
+<li>Direct Symfony Mailer transports that do not use Drupal Mailer Plus or hook_mail_alter are not suppressed unless callers use the shared policy. Enable the optional Mailer Plus adapter when sending through Mailer Plus.</li>
+<li>Event retention and recipient-history erasure do not delete durable suppression and do not restore consent. Deleting history is not a reactivation.</li>
+<li>This is not an inbound email parser. Optional reconciliation is GET-only and does not change Postmark's suppression list.</li>
+<li>Separate webhook credentials per source are not implemented.</li>
 </ul>
 <h3 id="module-project--support">Supporting organizations</h3>
 <p>Maintained by Jeremy Michael Cerda. Development sponsored by <a href="https://www.drupal.org/wilkes-liberty">Wilkes &amp; Liberty, LLC</a>. Licensed under GPL-2.0-or-later.</p>
