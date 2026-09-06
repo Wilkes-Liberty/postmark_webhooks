@@ -23,7 +23,9 @@ accepted, duplicate and authenticated-rejection counts with last-seen timestamps
 The counters begin at installation of update 10004; they do not reconstruct past
 traffic. Successful event storage and its accepted counter commit together.
 Counters survive history retention and contain no mailbox, message or secret
-labels. Rejections cover authenticated payload/source errors, not authentication
+labels. Rejection counters are best-effort during database outages, so malformed requests
+still receive their deterministic client error. Rejections cover authenticated
+payload/source errors, not authentication
 failures, upstream proxy errors or database outages; use infrastructure logs for
 those. The settings page and preview require the existing administration
 permission. Run database updates when upgrading.

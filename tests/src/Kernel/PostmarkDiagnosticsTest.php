@@ -109,4 +109,16 @@ class PostmarkDiagnosticsTest extends KernelTestBase {
     $this->assertSame(['total' => 0, 'last_seen' => NULL], $metrics->snapshot()['duplicate']);
   }
 
+  /**
+   * Counter outages cannot change a malformed request's deterministic response.
+   */
+  public function testRejectedCounterIsBestEffort(): void {
+    new Settings(['postmark_webhooks.webhook_secret' => 'test-secret']);
+    $this->container->get('database')->schema()->dropTable('postmark_intake_metrics');
+    $request = Request::create('/api/webhooks/postmark', 'POST', [], [], [], [], '{}');
+    $request->headers->set('Authorization', 'Basic ' . base64_encode('postmark:test-secret'));
+    $this->assertSame(400, PostmarkWebhookController::create($this->container)->receive($request)->getStatusCode());
+    $this->assertSame(0, (int) $this->container->get('database')->select('postmark_events')->countQuery()->execute()->fetchField());
+  }
+
 }

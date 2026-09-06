@@ -69,7 +69,7 @@ class PostmarkWebhookController extends ControllerBase {
 
     $body = stream_get_contents($request->getContent(TRUE), WebhookPayload::MAX_BYTES + 1);
     if ($body === FALSE || strlen($body) > WebhookPayload::MAX_BYTES) {
-      $this->metrics->record('rejected', $this->time->getCurrentTime());
+      $this->metrics->recordRejection($this->time->getCurrentTime());
       return new Response('Payload Too Large', 413);
     }
     try {
@@ -77,18 +77,18 @@ class PostmarkWebhookController extends ControllerBase {
       [$occurred, $time_basis] = EventTime::resolve($data, $this->time->getRequestTime());
     }
     catch (\JsonException | \InvalidArgumentException $exception) {
-      $this->metrics->record('rejected', $this->time->getCurrentTime());
+      $this->metrics->recordRejection($this->time->getCurrentTime());
       return new Response('Bad Request', 400);
     }
 
     try {
       if (!SourcePolicy::permitsIntake($data)) {
-        $this->metrics->record('rejected', $this->time->getCurrentTime());
+        $this->metrics->recordRejection($this->time->getCurrentTime());
         return new Response('Forbidden', 403);
       }
     }
     catch (\InvalidArgumentException $exception) {
-      $this->metrics->record('rejected', $this->time->getCurrentTime());
+      $this->metrics->recordRejection($this->time->getCurrentTime());
       return new Response('Service Unavailable', 503);
     }
 

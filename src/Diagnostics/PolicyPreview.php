@@ -37,7 +37,7 @@ final class PolicyPreview {
     return [
       'enabled' => (bool) $this->configFactory->get('postmark_webhooks.settings')->get('enabled'),
       'secret_configured' => $credentials->isConfigured(),
-      'previous_secret' => $credentials->rotationStatus($this->time->getCurrentTime()),
+      'previous_secret_status' => $credentials->rotationStatus($this->time->getCurrentTime()),
       'coverage' => [
         'core' => TRUE,
         'mailer_plus' => $this->moduleHandler->moduleExists('postmark_webhooks_mailer'),

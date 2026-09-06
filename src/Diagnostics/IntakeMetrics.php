@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\postmark_webhooks\Diagnostics;
 
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Database\DatabaseException;
 
 /**
  * Fixed-cardinality intake totals; never stores a recipient or credential.
@@ -15,6 +16,22 @@ final class IntakeMetrics {
    * Constructs the metrics store.
    */
   public function __construct(private readonly Connection $database) {}
+
+  /**
+   * Counts a rejection without changing a deterministic client error to 5xx.
+   */
+  public function recordRejection(int $now): bool {
+    $transaction = $this->database->startTransaction();
+    try {
+      $this->record('rejected', $now);
+    }
+    catch (DatabaseException $exception) {
+      $transaction->rollBack();
+      return FALSE;
+    }
+    unset($transaction);
+    return TRUE;
+  }
 
   /**
    * Atomically records a successful intake, retry, or authenticated rejection.

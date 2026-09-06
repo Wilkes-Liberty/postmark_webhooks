@@ -90,10 +90,17 @@ final class PolicyPreviewForm extends FormBase {
       $server = trim($form_state->getValue('server_id'));
       $stream = trim($form_state->getValue('message_stream'));
       $source = ($server !== '' || $stream !== '') ? new SourceContext($server, $stream) : NULL;
+    }
+    catch (\InvalidArgumentException $exception) {
+      $form_state->setErrorByName('server_id', $this->t('Provide a valid server ID and message stream, or leave both blank.'));
+      $form_state->setErrorByName('message_stream', $this->t('Provide a valid server ID and message stream, or leave both blank.'));
+      return;
+    }
+    try {
       $form_state->set('preview', $this->preview->preview($form_state->getValue('recipient'), $form_state->getValue('mail_path'), $source));
     }
     catch (\InvalidArgumentException $exception) {
-      $form_state->setErrorByName('recipient', $this->t('Enter one valid recipient and either both valid source fields or neither.'));
+      $form_state->setErrorByName('recipient', $this->t('Enter one valid recipient.'));
     }
   }
 
