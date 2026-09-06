@@ -349,7 +349,19 @@ function postmark_webhooks_requirements($phase): array {
     return [];
   }
   $requirements = [];
-  $report = \Drupal::service('postmark_webhooks.health')->evaluate();
+  try {
+    $report = \Drupal::service('postmark_webhooks.health')->evaluate();
+  }
+  catch (\Throwable $exception) {
+    return [
+      'postmark_webhooks_health' => [
+        'title' => t('Postmark Webhooks'),
+        'value' => 'error',
+        'severity' => REQUIREMENT_ERROR,
+        'description' => t('Health evaluation could not run. Database updates may still be pending.'),
+      ],
+    ];
+  }
   $map = [
     'ok' => REQUIREMENT_OK,
     'unknown' => REQUIREMENT_INFO,

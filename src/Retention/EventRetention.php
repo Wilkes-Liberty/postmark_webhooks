@@ -19,25 +19,27 @@ final class EventRetention {
   public function __construct(private readonly Connection $database) {}
 
   /**
-   * Counts expired history rows up to one past the warning threshold.
+   * Whether more than $limit expired history rows exist.
    */
-  public function expiredCount(int $cutoff, int $limit = 0): int {
-    if (!$this->database->schema()->tableExists('postmark_events')) {
-      return 0;
+  public function expiredExceeds(int $cutoff, int $limit): bool {
+    if ($limit <= 0 || !$this->database->schema()->tableExists('postmark_events')) {
+      return FALSE;
     }
-    $query = $this->database->select('postmark_events', 'pe')
+    return (bool) $this->database->select('postmark_events', 'pe')
       ->fields('pe', ['eid'])
-      ->condition('created', $cutoff, '<');
-    if ($limit > 0) {
-      $query->range(0, $limit + 1);
-    }
-    return count($query->execute()->fetchCol());
+      ->condition('created', $cutoff, '<')
+      ->range($limit, 1)
+      ->execute()
+      ->fetchField();
   }
 
   /**
    * Deletes at most one batch; concurrent runs may safely select the same IDs.
    */
   public function purgeBefore(int $cutoff): int {
+    if (!$this->database->schema()->tableExists('postmark_events')) {
+      return 0;
+    }
     $ids = $this->database->select('postmark_events', 'pe')
       ->fields('pe', ['eid'])
       ->condition('created', $cutoff, '<')

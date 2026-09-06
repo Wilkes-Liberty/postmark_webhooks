@@ -42,16 +42,16 @@ final class HealthEvaluator {
     $intake = $this->metrics->snapshot();
     $last_accepted = $intake['accepted']['last_seen'];
     $retention_days = (int) ($config->get('event_retention_days') ?? 90);
-    $expired = 0;
+    $expired_beyond = FALSE;
     if ($retention_days > 0 && $backlog_limit > 0) {
-      $expired = $this->retention->expiredCount($now - $retention_days * 86400, $backlog_limit);
+      $expired_beyond = $this->retention->expiredExceeds($now - $retention_days * 86400, $backlog_limit);
     }
 
     $checks = [
       $this->secretCheck($credentials),
       $this->rotationCheck($credentials, $now, $rotation_warning),
       $this->silenceCheck($last_accepted, $now, $expected),
-      $this->backlogCheck($expired, $backlog_limit, $retention_days),
+      $this->backlogCheck($expired_beyond, $backlog_limit, $retention_days),
       $this->sourceCheck(),
       $this->reachabilityCheck(),
       $this->providerCheck(),
@@ -69,7 +69,7 @@ final class HealthEvaluator {
         'expected_activity_seconds' => $expected,
       ],
       'retention' => [
-        'expired_rows' => $expired,
+        'exceeds_warning_threshold' => $expired_beyond,
         'warning_threshold' => $backlog_limit,
       ],
       'rotation' => [
@@ -145,11 +145,11 @@ final class HealthEvaluator {
   /**
    * Warns when expired history exceeds the operator threshold.
    */
-  private function backlogCheck(int $expired, int $limit, int $retention_days): array {
+  private function backlogCheck(bool $expired_beyond, int $limit, int $retention_days): array {
     if ($retention_days <= 0 || $limit <= 0) {
       return $this->check('retention_backlog', 'ok', 'not_configured', 'Retention backlog warnings are disabled.');
     }
-    if ($expired > $limit) {
+    if ($expired_beyond) {
       return $this->check('retention_backlog', 'warning', 'backlogged', 'Expired event history exceeds the warning threshold.');
     }
     return $this->check('retention_backlog', 'ok', 'within_limit', 'Expired event history is within the warning threshold.');

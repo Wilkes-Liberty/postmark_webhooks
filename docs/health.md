@@ -11,7 +11,7 @@ send mail.
 | `secret` | Active settings-only webhook secret is present |
 | `rotation` | Previous secret absent, active, expiring, expired or invalid |
 | `intake_silence` | Last accepted intake versus an optional activity window |
-| `retention_backlog` | Expired event rows versus a warning threshold |
+| `retention_backlog` | Whether expired event rows exceed a warning threshold |
 | `source_health` | Always unknown: counters have no source labels |
 | `endpoint_reachability` | Always `unproven` from local counters |
 | `provider_delivery` | Optional hook; default `not_queried` |

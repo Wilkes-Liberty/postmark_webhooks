@@ -63,12 +63,22 @@ function postmark_webhooks_mail_alter(array &$message): void {
  * (90 days in install config). 0 disables purge.
  */
 function postmark_webhooks_cron(): void {
-  $days = (int) (\Drupal::config('postmark_webhooks.settings')->get('event_retention_days') ?? 90);
-  if ($days > 0) {
-    $cutoff = \Drupal::time()->getRequestTime() - ($days * 86400);
-    \Drupal::service('postmark_webhooks.event_retention')->purgeBefore($cutoff);
+  try {
+    $days = (int) (\Drupal::config('postmark_webhooks.settings')->get('event_retention_days') ?? 90);
+    if ($days > 0) {
+      $cutoff = \Drupal::time()->getRequestTime() - ($days * 86400);
+      \Drupal::service('postmark_webhooks.event_retention')->purgeBefore($cutoff);
+    }
   }
-  \Drupal::service('postmark_webhooks.health_alerts')->notify();
+  catch (\Throwable $exception) {
+    \Drupal::logger('postmark_webhooks')->error('Retention cleanup failed during cron.');
+  }
+  try {
+    \Drupal::service('postmark_webhooks.health_alerts')->notify();
+  }
+  catch (\Throwable $exception) {
+    \Drupal::logger('postmark_webhooks')->error('Health evaluation failed during cron.');
+  }
 }
 
 /**
