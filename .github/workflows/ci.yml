@@ -142,6 +142,7 @@ jobs:
           ln -s /tmp/postmark-ci/web /tmp/postmark-subdirectory/subdirectory
           POSTMARK_TEST_WEBROOT=/tmp/postmark-ci/web PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8890 -t /tmp/postmark-subdirectory "$GITHUB_WORKSPACE/tests/fixtures/subdirectory-router.php" > /tmp/postmark-subdirectory.log 2>&1 &
           server_pid=$!
+          trap 'pkill -TERM -P "$server_pid" || true; kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
           ready=false
           for attempt in $(seq 1 20); do
             if ! kill -0 "$server_pid" 2>/dev/null; then

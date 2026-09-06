@@ -85,9 +85,11 @@ class PostmarkWebhookRoutingTest extends BrowserTestBase {
     $client = $this->getHttpClient();
     $url = $this->getAbsoluteUrl('api/webhooks/postmark');
     $fixtures = dirname(__DIR__, 2) . '/fixtures/postmark/';
+    $contents = file_get_contents($fixtures . 'bounce.json');
+    $this->assertIsString($contents, 'The bounce fixture can be read.');
     $options = [
       'http_errors' => FALSE,
-      'json' => json_decode(file_get_contents($fixtures . 'bounce.json'), TRUE, 512, JSON_THROW_ON_ERROR),
+      'json' => json_decode($contents, TRUE, 512, JSON_THROW_ON_ERROR),
     ];
     $this->assertSame(401, $client->post($url, $options)->getStatusCode());
     $options['auth'] = ['postmark', 'routing-test-secret'];
@@ -96,7 +98,9 @@ class PostmarkWebhookRoutingTest extends BrowserTestBase {
     $this->assertSame(405, $client->get($url, ['http_errors' => FALSE])->getStatusCode());
     $this->assertSame(1, (int) $this->container->get('database')->select('postmark_events')->countQuery()->execute()->fetchField());
     foreach (['spam-complaint.json', 'subscription-change.json'] as $fixture) {
-      $options['json'] = json_decode(file_get_contents($fixtures . $fixture), TRUE, 512, JSON_THROW_ON_ERROR);
+      $contents = file_get_contents($fixtures . $fixture);
+      $this->assertIsString($contents, sprintf('The %s fixture can be read.', $fixture));
+      $options['json'] = json_decode($contents, TRUE, 512, JSON_THROW_ON_ERROR);
       $this->assertSame(200, $client->post($url, $options)->getStatusCode());
       $this->assertSame(200, $client->post($url, $options)->getStatusCode());
     }

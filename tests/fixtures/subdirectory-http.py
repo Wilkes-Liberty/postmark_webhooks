@@ -57,6 +57,8 @@ assert int(count.strip()) == 1
 drush('php:eval', "if (!\\Drupal\\user\\Entity\\Role::load('postmark_http_operator')) { \\Drupal\\user\\Entity\\Role::create(['id'=>'postmark_http_operator','label'=>'HTTP test operator'])->save(); }")
 drush('role:perm:add', 'postmark_http_operator', 'administer postmark webhook settings')
 drush('user:role:add', 'postmark_http_operator', 'admin')
+# Drupal validates this destination against the request base path. Omitting the
+# prefix produces a rejected external redirect on the installed-site fixture.
 login = drush('user:login', '/subdirectory/admin/config/services/postmark-webhook', '--no-browser').strip()
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 opener.open(login, timeout=20).read()
