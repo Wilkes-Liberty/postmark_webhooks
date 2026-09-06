@@ -14,7 +14,7 @@ require_disposable_root() {
     /tmp/postmark-*|/private/tmp/postmark-*)
       ;;
     *)
-      echo "Refusing to delete unsafe path $resolved" >&2
+      echo "Refusing unsafe path $resolved" >&2
       exit 1
       ;;
   esac
@@ -93,6 +93,7 @@ PY
 WALKTHROUGH_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
 
 echo "=== Shared Drupal fixture ==="
+require_disposable_root "$BASE"
 if [[ -d "$BASE/vendor" && -f "$BASE/composer.json" ]]; then
   echo "Reusing $BASE"
 else
