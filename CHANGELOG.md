@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - #3621123: Check every To/Cc/Bcc recipient before core mail transport and reject malformed lists safely.
+- Issue #3621122: Reject missing, empty or padded Bounce types before claiming event identity, so corrected retries can establish suppression.
 
 - #3621121: Preserve minimal suppression evidence independently of event retention, including alpha upgrades.
 - #3621124: Use validated provider occurrence times and preserve newer evidence on delayed events.
