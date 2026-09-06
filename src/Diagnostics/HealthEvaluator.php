@@ -58,7 +58,9 @@ final class HealthEvaluator {
     ];
     $severity = 'ok';
     foreach ($checks as $check) {
-      $severity = $this->worse($severity, $check['severity']);
+      if (in_array($check['severity'], ['warning', 'error'], TRUE)) {
+        $severity = $this->worse($severity, $check['severity']);
+      }
     }
     return [
       'severity' => $severity,

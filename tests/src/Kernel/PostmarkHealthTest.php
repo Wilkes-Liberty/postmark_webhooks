@@ -44,7 +44,7 @@ class PostmarkHealthTest extends KernelTestBase {
    */
   public function testQuietSiteIsUnknown(): void {
     $report = $this->container->get('postmark_webhooks.health')->evaluate(1_700_000_000);
-    $this->assertSame('unknown', $report['severity']);
+    $this->assertSame('ok', $report['severity']);
     $this->assertSame('unproven', $report['endpoint_reachability']);
     $this->assertSame('not_configured', $this->checkStatus($report, 'intake_silence'));
     $this->assertSame('unknown', $this->checkSeverity($report, 'intake_silence'));

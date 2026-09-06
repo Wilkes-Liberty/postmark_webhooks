@@ -20,7 +20,8 @@ No check includes a recipient, secret or raw provider body. Last accepted
 intake is an aggregate timestamp.
 
 Silence is `unknown` unless `health_expected_activity_seconds` is greater than
-zero. Quiet sites are not reported broken.
+zero. Unknown checks do not raise overall severity. Quiet sites are not
+reported broken.
 
 Local accepted counters never prove that Postmark can reach the endpoint.
 Another module may implement `hook_postmark_webhooks_provider_health()` to
