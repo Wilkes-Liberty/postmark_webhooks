@@ -42,6 +42,8 @@ class PostmarkEndpointUrlTest extends KernelTestBase {
     $request->headers->set('X-Forwarded-Host', 'public.example.com');
     $request->headers->set('X-Forwarded-Proto', 'https');
     $request->headers->set('X-Forwarded-Prefix', '/proxy');
+    $original_proxies = Request::getTrustedProxies();
+    $original_headers = Request::getTrustedHeaderSet();
     Request::setTrustedProxies(['127.0.0.1'], Request::HEADER_X_FORWARDED_HOST | Request::HEADER_X_FORWARDED_PROTO | Request::HEADER_X_FORWARDED_PREFIX);
     try {
       $context->fromRequest($request);
@@ -49,7 +51,7 @@ class PostmarkEndpointUrlTest extends KernelTestBase {
       $this->assertSame('https://public.example.com/proxy/api/webhooks/postmark', (string) $form['webhook_url']['#markup']);
     }
     finally {
-      Request::setTrustedProxies([], -1);
+      Request::setTrustedProxies($original_proxies, $original_headers);
     }
   }
 

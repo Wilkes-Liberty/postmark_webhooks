@@ -36,7 +36,8 @@ https://postmark:URL_ENCODED_SECRET@example.com/api/webhooks/postmark
 Postmark sends these credentials as HTTP Basic Auth. The password must match
 the settings value; `postmark` is the conventional username. Use HTTPS, preserve
 the `Authorization` header through your proxy, and keep credentials out of
-logs. Copy the endpoint path from the admin form: it is generated through
+logs. Copy the webhook URL from the admin form and add credentials in Postmark.
+The URL is generated through
 Drupal routing and includes the installation base path and trusted proxy context.
 The displayed URL contains no credentials.
 
