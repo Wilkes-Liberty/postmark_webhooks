@@ -1,0 +1,4 @@
+services:
+  postmark_webhooks_mailer.envelope_policy:
+    class: Drupal\postmark_webhooks_mailer\EnvelopePolicy
+    arguments: ['@postmark_webhooks.suppression_policy', '@config.factory']

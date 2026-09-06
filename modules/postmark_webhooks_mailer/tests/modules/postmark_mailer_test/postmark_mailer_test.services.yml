@@ -1,0 +1,5 @@
+services:
+  postmark_mailer_test.transport_factory:
+    class: Drupal\postmark_mailer_test\CaptureFactory
+    tags:
+      - { name: mailer.transport_factory }

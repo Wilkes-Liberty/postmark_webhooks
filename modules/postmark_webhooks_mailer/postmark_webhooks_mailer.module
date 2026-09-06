@@ -1,0 +1,20 @@
+<?php
+
+/**
+ * @file
+ * Optional Mailer Plus integration for Postmark suppression.
+ */
+
+use Drupal\symfony_mailer\EmailInterface;
+
+/**
+ * Implements hook_mailer_init().
+ */
+function postmark_webhooks_mailer_mailer_init(EmailInterface $email): void {
+  $email->addCallback(
+    [\Drupal::service('postmark_webhooks_mailer.envelope_policy'), 'check'],
+    EmailInterface::PHASE_POST_RENDER,
+    PHP_INT_MAX,
+    'postmark_webhooks.envelope_policy',
+  );
+}
