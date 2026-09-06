@@ -18,7 +18,7 @@ final class PolicyPreviewForm extends FormBase {
   /**
    * Constructs the preview form.
    */
-  public function __construct(private readonly PolicyPreview $preview) {}
+  public function __construct(protected PolicyPreview $preview) {}
 
   /**
    * {@inheritdoc}

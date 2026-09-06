@@ -40,6 +40,8 @@ class PostmarkWebhookRoutingTest extends BrowserTestBase {
     $this->drupalGet($path);
     $this->submitForm(['recipient' => 'preview@example.com', 'mail_path' => 'core'], 'Preview policy');
     $this->assertSession()->pageTextContains('Suppression is disabled.');
+    $this->submitForm(['recipient' => 'second@example.com', 'mail_path' => 'core'], 'Preview policy');
+    $this->assertSession()->pageTextContains('Suppression is disabled.');
     $this->assertSession()->responseHeaderContains('Cache-Control', 'no-cache');
     $database = $this->container->get('database');
     foreach (['postmark_events', 'postmark_suppression', 'postmark_intake_metrics'] as $table) {
