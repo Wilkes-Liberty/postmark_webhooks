@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- #3621121: Preserve minimal suppression evidence independently of event retention, including alpha upgrades.
+- #3621124: Use validated provider occurrence times and preserve newer evidence on delayed events.
+- #3621126: Expose one injectable, typed suppression policy for integrations and diagnostics.
+
 - #3621122: Validate webhook object shape, extracted fields and body size before storage; validate imported suppression settings.
 
 - #3621119: Preserve distinct webhook events and recipients with a versioned event identity.

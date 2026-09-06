@@ -72,7 +72,7 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
     $form['suppression']['event_retention_days'] = [
       '#type'          => 'number',
       '#title'         => $this->t('Event log retention (days)'),
-      '#description'   => $this->t('Cron deletes webhook event rows older than this. 0 keeps them forever. The default is 90 days.'),
+      '#description'   => $this->t('Cron deletes event history older than this. Durable suppression evidence is retained independently. 0 keeps history forever. The default is 90 days.'),
       '#default_value' => $config->get('event_retention_days') ?? 90,
       '#min'           => 0,
       '#max'           => 3650,
