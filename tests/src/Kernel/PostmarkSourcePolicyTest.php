@@ -67,6 +67,10 @@ class PostmarkSourcePolicyTest extends KernelTestBase {
     $this->assertTrue($policy->decide('scope@example.com', $outbound)->suppressed);
     $this->config('postmark_webhooks.settings')->set('source_policies', [$mapping, $mapping])->save();
     $this->assertSame('invalid_source_policy', $policy->decide('any@example.com', $outbound)->reason);
+    $this->config('postmark_webhooks.settings')->set('source_policies', [
+      ['server_id' => '1', 'message_stream' => chr(255), 'scope' => 'source'],
+    ])->save();
+    $this->assertSame('invalid_source_policy', $policy->decide('any@example.com', $outbound)->reason);
   }
 
   /**
@@ -109,7 +113,7 @@ class PostmarkSourcePolicyTest extends KernelTestBase {
     $settings = Settings::getAll();
     new Settings([
       'postmark_webhooks.webhook_secret' => 'source-test-only',
-      'postmark_webhooks.allowed_sources' => [['server_id' => '1', 'message_stream' => 'broadcast']],
+      'postmark_webhooks.allowed_sources' => [['server_id' => 1, 'message_stream' => 'broadcast']],
     ] + $settings);
     $send = function (array $source, string $password = 'source-test-only'): int {
       $request = Request::create('/api/webhooks/postmark', 'POST', [], [], [], [], json_encode($source + [
