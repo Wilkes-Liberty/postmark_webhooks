@@ -6,6 +6,7 @@
  */
 
 use Drupal\Component\Datetime\Time;
+use Drupal\postmark_webhooks\Retention\EventRetention;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Site\Settings;
 use Drupal\postmark_webhooks\Suppression\SuppressionStore;
@@ -23,6 +24,11 @@ new Settings(['postmark_webhooks.webhook_secret' => 'concurrency-test']);
 fwrite(STDOUT, "ready\n");
 // Both workers wait until the parent has observed both ready signals.
 fgets(STDIN);
+if (isset($input['purge_before'])) {
+  $retention = new EventRetention($database);
+  fwrite(STDOUT, (string) $retention->purgeBefore($input['purge_before']));
+  exit(0);
+}
 $request = Request::create('/api/webhooks/postmark', 'POST', [], [], [], [], json_encode([
   'RecordType' => 'Bounce',
   'Email' => 'concurrent@example.com',
