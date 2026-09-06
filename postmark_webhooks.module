@@ -5,6 +5,8 @@
  * Hook implementations for the Postmark Webhooks module.
  */
 
+use Drupal\postmark_webhooks\Mail\RecipientList;
+
 /**
  * Implements hook_mail_alter().
  *
@@ -19,24 +21,34 @@ function postmark_webhooks_mail_alter(array &$message): void {
     return;
   }
 
-  $to = trim($message['to'] ?? '');
-  if ($to === '') {
+  if (isset($message['send']) && !$message['send']) {
     return;
   }
-
-  // Strip display name if present: "Name <email>" → "email".
-  if (preg_match('/<([^>]+)>/', $to, $m)) {
-    $to = $m[1];
+  try {
+    $recipients = RecipientList::parse($message['to'] ?? '');
+    foreach ($message['headers'] ?? [] as $name => $value) {
+      if (in_array(strtolower($name), ['to', 'cc', 'bcc'], TRUE)) {
+        $recipients = array_merge($recipients, RecipientList::parse($value));
+      }
+    }
   }
-
-  $reason = _postmark_webhooks_suppression_reason($to, $config);
-  if ($reason !== NULL) {
+  catch (\InvalidArgumentException $exception) {
     $message['send'] = FALSE;
-    \Drupal::logger('postmark_webhooks')->info(
-      'Suppressed outbound email to %to: %reason',
-      ['%to' => _postmark_webhooks_redact_recipient($to), '%reason' => $reason]
-    );
+    \Drupal::logger('postmark_webhooks')->warning('Blocked mail with an invalid recipient list.');
+    return;
   }
+  foreach (array_unique($recipients) as $recipient) {
+    $reason = _postmark_webhooks_suppression_reason($recipient, $config);
+    if ($reason !== NULL) {
+      $message['send'] = FALSE;
+      \Drupal::logger('postmark_webhooks')->info(
+        'Suppressed outbound email to %to: %reason',
+        ['%to' => _postmark_webhooks_redact_recipient($recipient), '%reason' => $reason]
+      );
+      return;
+    }
+  }
+
 }
 
 /**

@@ -1,0 +1,6 @@
+name: Postmark Webhooks test
+package: Testing
+type: module
+core_version_requirement: ^10.3 || ^11
+dependencies:
+  - postmark_webhooks:postmark_webhooks
