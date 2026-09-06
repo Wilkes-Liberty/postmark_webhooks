@@ -327,6 +327,12 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
       'Metadata' => ['nested' => ['accepted' => TRUE]],
     ];
     $this->assertSame(200, $this->receive($this->request(self::SECRET, json_encode($valid)))->getStatusCode());
+    $metadata = 'leaf';
+    for ($depth = 0; $depth < 64; $depth++) {
+      $metadata = ['nested' => $metadata];
+    }
+    $valid['Metadata'] = $metadata;
+    $this->assertSame(200, $this->receive($this->request(self::SECRET, json_encode($valid)))->getStatusCode());
     $this->assertSame(1, $this->eventCount());
   }
 
