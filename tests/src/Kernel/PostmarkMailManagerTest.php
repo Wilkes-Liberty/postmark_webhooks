@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\Tests\postmark_webhooks\Kernel;
 
 use Drupal\KernelTests\KernelTestBase;
@@ -27,11 +29,12 @@ class PostmarkMailManagerTest extends KernelTestBase {
     $this->installConfig(['postmark_webhooks']);
     $this->config('system.site')->set('mail', 'sender@example.com')->save();
     $this->config('system.mail')->set('interface', ['default' => 'test_mail_collector'])->save();
+    $this->container->get('state')->set('system.test_mail_collector', []);
     $this->container->get('postmark_webhooks.suppression_store')->record([
       'event_type' => 'Bounce',
       'bounce_type' => 'HardBounce',
       'recipient' => 'blocked@example.com',
-      'created' => time(),
+      'created' => $this->container->get('datetime.time')->getRequestTime(),
       'event_key' => str_repeat('a', 64),
     ]);
   }
@@ -68,11 +71,11 @@ class PostmarkMailManagerTest extends KernelTestBase {
     $message = $manager->mail('postmark_webhooks_test', 'test', $to, 'en');
     $this->assertTrue($message['result']);
     $this->assertSame($to, $message['to']);
-    $this->assertCount(1, $this->container->get('state')->get('system.test_mail_collector'));
+    $this->assertCount(1, $this->container->get('state')->get('system.test_mail_collector', []));
     $cancelled = $manager->mail('postmark_webhooks_test', 'test', $to, 'en', ['block' => TRUE]);
     $this->assertFalse($cancelled['send']);
     $this->assertNull($cancelled['result']);
-    $this->assertCount(1, $this->container->get('state')->get('system.test_mail_collector'));
+    $this->assertCount(1, $this->container->get('state')->get('system.test_mail_collector', []));
   }
 
 }
