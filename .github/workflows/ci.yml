@@ -421,3 +421,37 @@ jobs:
             exit 1
           fi
           python3 "$GITHUB_WORKSPACE/tests/fixtures/subdirectory-http.py" /tmp/postmark-ci http://127.0.0.1:8890
+
+  # Composer-install the Drupal.org archive, not the git checkout (#3621227).
+  published:
+    name: published-alpha2-d11.4-php8.4
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: drupal
+          POSTGRES_PASSWORD: drupal
+          POSTGRES_DB: drupal
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SIMPLETEST_DB: pgsql://drupal:drupal@127.0.0.1:5432/drupal
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, gd
+          tools: composer:v2
+          coverage: none
+      - name: Verify published Drupal.org package
+        env:
+          DRUPAL_CONSTRAINT: '11.4.*'
+          POSTMARK_PUBLISHED_VERSION: '1.0.0-alpha2'
+          POSTMARK_PUBLISHED_SHA1: e31e9f67b554cdaf35d04549d955310c0d1d3c30
+        run: bash "$GITHUB_WORKSPACE/tests/fixtures/verify-published-package.sh"

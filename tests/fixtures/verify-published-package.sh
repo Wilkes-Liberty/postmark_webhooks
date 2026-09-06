@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# Install the Drupal.org archive (not a git checkout) and run its suite.
+set -euo pipefail
+
+VERSION="${POSTMARK_PUBLISHED_VERSION:-1.0.0-alpha2}"
+EXPECTED_SHA1="${POSTMARK_PUBLISHED_SHA1:-e31e9f67b554cdaf35d04549d955310c0d1d3c30}"
+ROOT="${POSTMARK_PUBLISHED_ROOT:-/tmp/postmark-published}"
+DRUPAL_CONSTRAINT="${DRUPAL_CONSTRAINT:-11.4.*}"
+SIMPLETEST_DB="${SIMPLETEST_DB:?SIMPLETEST_DB is required}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+rm -rf "$ROOT"
+mkdir -p "$ROOT"
+export POSTMARK_CI_DIR="$ROOT"
+export DRUPAL_CONSTRAINT
+export MAILER_CONSTRAINT="${MAILER_CONSTRAINT:-}"
+export AUDIT_BLOCK_INSECURE="${AUDIT_BLOCK_INSECURE:-true}"
+python3 "$SCRIPT_DIR/create-ci-fixture.py"
+composer install --working-dir="$ROOT" --no-interaction --no-progress
+
+composer require --working-dir="$ROOT" --no-interaction --no-progress "drupal/postmark_webhooks:$VERSION"
+MODULE="$ROOT/web/modules/contrib/postmark_webhooks"
+if [[ -L "$MODULE" ]]; then
+  echo "Refusing a git symlink; published verification needs the Composer dist." >&2
+  exit 1
+fi
+
+LOCK_SHA1="$(python3 - <<PY
+import json
+lock = json.load(open("$ROOT/composer.lock"))
+for pkg in lock.get("packages", []):
+    if pkg.get("name") == "drupal/postmark_webhooks":
+        print(pkg.get("dist", {}).get("shasum", ""))
+        break
+PY
+)"
+if [[ "$LOCK_SHA1" != "$EXPECTED_SHA1" ]]; then
+  echo "Published shasum $LOCK_SHA1 does not match $EXPECTED_SHA1" >&2
+  exit 1
+fi
+
+composer show --working-dir="$ROOT" --no-ansi drupal/postmark_webhooks
+php -r 'echo "PHP ", PHP_VERSION, "\n";'
+
+mkdir -p "$ROOT/web/sites/simpletest/browser_output"
+(
+  cd "$ROOT/web"
+  PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8888 -t . .ht.router.php > /tmp/postmark-published-http.log 2>&1 &
+  echo $! > /tmp/postmark-published-http.pid
+)
+server_pid="$(cat /tmp/postmark-published-http.pid)"
+trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+for attempt in $(seq 1 20); do
+  if curl --silent --output /dev/null http://127.0.0.1:8888/robots.txt; then
+    break
+  fi
+  sleep 1
+done
+
+(
+  cd "$ROOT"
+  SIMPLETEST_BASE_URL=http://127.0.0.1:8888 SIMPLETEST_DB="$SIMPLETEST_DB" \
+    vendor/bin/phpunit -c web/core web/modules/contrib/postmark_webhooks/tests
+)
+if [[ -d "$MODULE/modules/postmark_webhooks_reconcile/tests" ]]; then
+  (
+    cd "$ROOT"
+    SIMPLETEST_BASE_URL=http://127.0.0.1:8888 SIMPLETEST_DB="$SIMPLETEST_DB" \
+      vendor/bin/phpunit -c web/core "$MODULE/modules/postmark_webhooks_reconcile/tests"
+  )
+fi
+python3 "$SCRIPT_DIR/drush-diagnostics.py" "$ROOT"
+"$ROOT/vendor/bin/drush" --root="$ROOT/web" cache:rebuild -y
+
+echo "Published package $VERSION sha1 $LOCK_SHA1 verified."
+
+# Composer-replace published alpha1 files with alpha2, then run alpha2 tests
+# (including interrupted-batch upgrade coverage that ships in the archive).
+UPGRADE_ROOT="${POSTMARK_PUBLISHED_UPGRADE_ROOT:-/tmp/postmark-published-upgrade}"
+rm -rf "$UPGRADE_ROOT"
+mkdir -p "$UPGRADE_ROOT"
+export POSTMARK_CI_DIR="$UPGRADE_ROOT"
+python3 "$SCRIPT_DIR/create-ci-fixture.py"
+composer install --working-dir="$UPGRADE_ROOT" --no-interaction --no-progress
+composer require --working-dir="$UPGRADE_ROOT" --no-interaction --no-progress "drupal/postmark_webhooks:1.0.0-alpha1"
+composer require --working-dir="$UPGRADE_ROOT" --no-interaction --no-progress "drupal/postmark_webhooks:$VERSION"
+UPGRADE_MODULE="$UPGRADE_ROOT/web/modules/contrib/postmark_webhooks"
+if [[ -L "$UPGRADE_MODULE" ]]; then
+  echo "Refusing a git symlink on the upgrade fixture." >&2
+  exit 1
+fi
+UPGRADE_SHA1="$(python3 - <<PY
+import json
+lock = json.load(open("$UPGRADE_ROOT/composer.lock"))
+for pkg in lock.get("packages", []):
+    if pkg.get("name") == "drupal/postmark_webhooks":
+        print(pkg.get("dist", {}).get("shasum", ""))
+        print(pkg.get("version", ""))
+        break
+PY
+)"
+echo "Upgrade fixture resolved:" $UPGRADE_SHA1
+mkdir -p "$UPGRADE_ROOT/web/sites/simpletest/browser_output"
+(
+  cd "$UPGRADE_ROOT"
+  SIMPLETEST_BASE_URL=http://127.0.0.1:8888 SIMPLETEST_DB="$SIMPLETEST_DB" \
+    vendor/bin/phpunit -c web/core \
+    web/modules/contrib/postmark_webhooks/tests/src/Kernel/PostmarkSuppressionTest.php \
+    web/modules/contrib/postmark_webhooks/tests/src/Kernel/PostmarkWebhookAuthTest.php
+)
+echo "Published alpha1-to-$VERSION Composer upgrade verified."
