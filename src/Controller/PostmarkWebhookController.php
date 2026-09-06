@@ -70,7 +70,7 @@ class PostmarkWebhookController extends ControllerBase {
     }
     try {
       $data = WebhookPayload::decode($body);
-      [$occurred, $time_basis] = EventTime::resolve($data, $this->time->getCurrentTime());
+      [$occurred, $time_basis] = EventTime::resolve($data, $this->time->getRequestTime());
     }
     catch (\JsonException | \InvalidArgumentException $exception) {
       return new Response('Bad Request', 400);

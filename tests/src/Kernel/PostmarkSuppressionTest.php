@@ -351,4 +351,25 @@ class PostmarkSuppressionTest extends KernelTestBase {
     $this->assertSame('disabled', $disabled->reason);
   }
 
+  /**
+   * Migration reports advancing progress and preserves rows across batches.
+   */
+  public function testMigrationBatchProgress(): void {
+    $database = $this->container->get('database');
+    $insert = $database->insert('postmark_events')->fields(['created', 'event_type']);
+    for ($i = 0; $i < 251; $i++) {
+      $insert->values([1, 'Delivery']);
+    }
+    $insert->execute();
+    \Drupal::moduleHandler()->loadInclude('postmark_webhooks', 'install');
+    $sandbox = [];
+    postmark_webhooks_update_10002($sandbox);
+    $this->assertSame(250, $sandbox['last_eid']);
+    $this->assertGreaterThan(0, $sandbox['#finished']);
+    $this->assertLessThan(1, $sandbox['#finished']);
+    postmark_webhooks_update_10002($sandbox);
+    $this->assertSame(1, $sandbox['#finished']);
+    $this->assertSame(251, (int) $database->select('postmark_events')->countQuery()->execute()->fetchField());
+  }
+
 }
