@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- #3621227: Verify the Drupal.org 1.0.0-alpha2 archive through Composer, including an alpha1-to-alpha2 file replacement. Live Postmark acceptance is still outstanding.
 - #3621226: Verify installation, upgrades, concurrent intake, unique keys, privacy, retention and indexed lookups on MySQL 8.4, MariaDB 10.11 and SQLite in addition to PostgreSQL 16.
 - #3621225: Run kernel, HTTP, upgrade, reconciliation and Drush checks on Drupal 10.6, 11.3 and 11.4 with PHP 8.3 and a current compatible PHP version. Keep Mailer Plus 1.6.2 and 2.0.2 on the supported matrix, isolate the advertised Drupal 10.3 floor from Composer audit blocking, and record resolved package versions in CI.
 

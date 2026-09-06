@@ -70,6 +70,8 @@ the repeated-submit and CSRF contracts.
 These checks do not claim a complete screen-reader audit or production-theme
 certification. PostgreSQL 16 remains the default matrix. MySQL 8.4, MariaDB
 10.11 and SQLite run on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5; see
-[database-verification.md](database-verification.md). Direct Symfony
-transports and custom processors that mutate recipients after the adapter
-callback remain outside the documented adapter boundary.
+[database-verification.md](database-verification.md). The Drupal.org archive
+is verified separately; see
+[published-package-verification.md](published-package-verification.md). Direct
+Symfony transports and custom processors that mutate recipients after the
+adapter callback remain outside the documented adapter boundary.
