@@ -63,6 +63,7 @@ jobs:
               'allow-plugins': {
                 'composer/installers': True,
                 'drupal/core-composer-scaffold': True,
+                'symfony/runtime': True,
                 'phpstan/extension-installer': True,
                 'dealerdirect/phpcodesniffer-composer-installer': True,
               },
