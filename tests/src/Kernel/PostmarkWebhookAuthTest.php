@@ -241,6 +241,7 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
     }
     \Drupal::moduleHandler()->loadInclude('postmark_webhooks', 'install');
     postmark_webhooks_update_10001();
+    postmark_webhooks_update_10001();
     $this->assertSame(2, $this->eventCount());
     $this->assertSame(2, (int) $database->select('postmark_events')->isNull('event_key')->countQuery()->execute()->fetchField());
     $this->setSecret(self::SECRET);

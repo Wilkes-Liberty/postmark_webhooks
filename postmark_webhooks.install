@@ -6,6 +6,7 @@
  */
 
 use Drupal\postmark_webhooks\Suppression\SuppressionStore;
+use Drupal\Core\Database\SchemaObjectExistsException;
 
 /**
  * Implements hook_schema().
@@ -134,12 +135,20 @@ function postmark_webhooks_schema() {
  */
 function postmark_webhooks_update_10001(): void {
   $schema = \Drupal::database()->schema();
-  $definition = postmark_webhooks_schema()['postmark_events'];
+  $field = [
+    'type' => 'varchar',
+    'length' => 64,
+    'not null' => FALSE,
+    'description' => 'Versioned event identity digest; NULL for legacy events.',
+  ];
   if (!$schema->fieldExists('postmark_events', 'event_key')) {
-    $schema->addField('postmark_events', 'event_key', $definition['fields']['event_key']);
+    $schema->addField('postmark_events', 'event_key', $field);
   }
-  if (!$schema->indexExists('postmark_events', 'event_key')) {
+  try {
     $schema->addUniqueKey('postmark_events', 'event_key', ['event_key']);
+  }
+  catch (SchemaObjectExistsException $exception) {
+    // The driver checks its own unique-key representation on resumed updates.
   }
 }
 

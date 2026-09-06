@@ -15,7 +15,7 @@ final class WebhookPayload {
    * Decodes one JSON object, rejecting malformed or oversized extracted fields.
    */
   public static function decode(string $body): array {
-    $object = json_decode($body, FALSE, 32, JSON_THROW_ON_ERROR | JSON_BIGINT_AS_STRING);
+    $object = json_decode($body, FALSE, 512, JSON_THROW_ON_ERROR | JSON_BIGINT_AS_STRING);
     if (!$object instanceof \stdClass) {
       throw new \InvalidArgumentException('Expected a JSON object.');
     }
