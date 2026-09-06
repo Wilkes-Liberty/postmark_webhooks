@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Isolated receiver worker for the PostgreSQL concurrency regression.
+ * Isolated receiver worker for concurrent intake and cleanup regressions.
  */
 
 use Drupal\Component\Datetime\Time;
@@ -18,8 +18,13 @@ use Symfony\Component\HttpFoundation\RequestStack;
 $input = json_decode(fgets(STDIN), TRUE, 512, JSON_THROW_ON_ERROR);
 $loader = require $input['root'] . '/autoload.php';
 $loader->addPsr4('Drupal\\postmark_webhooks\\', dirname(__DIR__, 2) . '/src');
-$loader->addPsr4('Drupal\\pgsql\\', $input['root'] . '/core/modules/pgsql/src');
-Database::addConnectionInfo('default', 'default', $input['database']);
+$options = $input['database'];
+$driver = $options['driver'] ?? 'pgsql';
+$loader->addPsr4('Drupal\\' . $driver . '\\', $input['root'] . '/core/modules/' . $driver . '/src/');
+if (!empty($options['namespace']) && !empty($options['autoload'])) {
+  $loader->addPsr4($options['namespace'] . '\\', $input['root'] . '/' . $options['autoload']);
+}
+Database::addConnectionInfo('default', 'default', $options);
 $database = Database::getConnection();
 new Settings(['postmark_webhooks.webhook_secret' => 'concurrency-test']);
 fwrite(STDOUT, "ready\n");
