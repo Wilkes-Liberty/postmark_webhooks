@@ -1,0 +1,23 @@
+postmark_webhooks.receive:
+  # Static path — the shared secret is sent via HTTP Basic Auth (Authorization
+  # header), NOT in the URL, so it never appears in access/proxy logs. The
+  # controller performs the auth check; _access stays TRUE so the route is
+  # reachable for the controller to authenticate.
+  path: '/api/webhooks/postmark'
+  defaults:
+    _controller: '\Drupal\postmark_webhooks\Controller\PostmarkWebhookController::receive'
+  methods: [POST]
+  requirements:
+    _access: 'TRUE'
+  options:
+    no_cache: TRUE
+
+postmark_webhooks.settings:
+  path: '/admin/config/services/postmark-webhook'
+  defaults:
+    _form: '\Drupal\postmark_webhooks\Form\PostmarkWebhookSettingsForm'
+    _title: 'Postmark Webhook Settings'
+  requirements:
+    _permission: 'administer postmark webhook settings'
+  options:
+    _admin_route: TRUE

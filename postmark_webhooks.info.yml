@@ -1,0 +1,5 @@
+name: Postmark Webhooks
+type: module
+description: 'Receives Postmark bounce/spam/delivery webhooks, logs events, and auto-suppresses outbound email to bounced/spam addresses via hook_mail_alter.'
+core_version_requirement: ^10.3 || ^11
+package: Chronicle

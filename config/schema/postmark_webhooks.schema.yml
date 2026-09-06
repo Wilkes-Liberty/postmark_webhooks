@@ -1,0 +1,16 @@
+postmark_webhooks.settings:
+  type: config_object
+  label: 'Postmark Webhooks settings'
+  mapping:
+    enabled:
+      type: boolean
+      label: 'Enable suppression of outbound mail to bounced/spam addresses'
+    bounce_suppression_days:
+      type: integer
+      label: 'Soft-bounce suppression window (days)'
+    complaint_suppression_days:
+      type: integer
+      label: 'Spam-complaint suppression window (days; 0 = permanent)'
+    event_retention_days:
+      type: integer
+      label: 'Postmark event retention (days; 0 = keep forever)'

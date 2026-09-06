@@ -1,0 +1,3 @@
+administer postmark webhook settings:
+  title: 'Administer Postmark webhook settings'
+  restrict access: true

@@ -1,0 +1,4 @@
+enabled: true
+bounce_suppression_days: 30
+complaint_suppression_days: 0
+event_retention_days: 90

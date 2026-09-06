@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [1.x]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - drupal: '10.3.*'
+            php: '8.3'
+          - drupal: '^11'
+            php: '8.4'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: drupal
+          POSTGRES_PASSWORD: drupal
+          POSTGRES_DB: drupal
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SIMPLETEST_DB: pgsql://drupal:drupal@127.0.0.1:5432/drupal
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_pgsql, gd
+          tools: composer:v2
+          coverage: none
+      - name: Create isolated compatibility fixture
+        env:
+          DRUPAL_CONSTRAINT: ${{ matrix.drupal }}
+        run: |
+          mkdir -p /tmp/postmark-ci
+          python3 - <<'PY'
+          import json, os
+          core = os.environ['DRUPAL_CONSTRAINT']
+          manifest = {
+            'name': 'test/postmark-compatibility',
+            'repositories': [{'type': 'composer', 'url': 'https://packages.drupal.org/8'}],
+            'require': {
+              'composer/installers': '^2',
+              'drupal/core-recommended': core,
+              'drupal/core-composer-scaffold': core,
+              'drupal/core-dev': core,
+            },
+            'config': {
+              'allow-plugins': {
+                'composer/installers': True,
+                'drupal/core-composer-scaffold': True,
+                'phpstan/extension-installer': True,
+                'dealerdirect/phpcodesniffer-composer-installer': True,
+              },
+              # Test the declared old minor without deploying it. This setting
+              # applies only to this disposable compatibility fixture.
+              'audit': {'block-insecure': False},
+            },
+            'extra': {
+              'installer-paths': {'web/core': ['type:drupal-core']},
+              'drupal-scaffold': {'locations': {'web-root': 'web/'}},
+            },
+          }
+          with open('/tmp/postmark-ci/composer.json', 'w') as f:
+            json.dump(manifest, f)
+          PY
+          composer install --working-dir=/tmp/postmark-ci --no-interaction --no-progress
+          mkdir -p /tmp/postmark-ci/web/modules/contrib
+          ln -s "$GITHUB_WORKSPACE" /tmp/postmark-ci/web/modules/contrib/postmark_webhooks
+      - name: Coding standards
+        run: /tmp/postmark-ci/vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install "$GITHUB_WORKSPACE"
+      - name: Kernel tests
+        working-directory: /tmp/postmark-ci
+        run: vendor/bin/phpunit -c web/core web/modules/contrib/postmark_webhooks/tests

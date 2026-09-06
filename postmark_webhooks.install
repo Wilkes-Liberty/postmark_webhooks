@@ -1,0 +1,78 @@
+<?php
+
+/**
+ * @file
+ * Install and schema hooks for the Postmark Webhooks module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function postmark_webhooks_schema() {
+  $schema['postmark_events'] = [
+    'description' => 'Log of Postmark bounce, spam, and delivery webhook events.',
+    'fields' => [
+      'eid' => [
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Event ID.',
+      ],
+      'created' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Unix timestamp when received.',
+      ],
+      'event_type' => [
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Postmark RecordType (e.g. Bounce, SpamComplaint, Delivery).',
+      ],
+      'message_id' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Postmark MessageID.',
+      ],
+      'recipient' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Recipient email address.',
+      ],
+      'bounce_type' => [
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Bounce Type (HardBounce, SoftBounce, etc.) if applicable.',
+      ],
+      'description' => [
+        'type' => 'varchar',
+        'length' => 512,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Human-readable description from Postmark.',
+      ],
+      'payload' => [
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+        'description' => 'Reserved legacy payload column; new events always store NULL.',
+      ],
+    ],
+    'primary key' => ['eid'],
+    'indexes' => [
+      'created'    => ['created'],
+      'event_type' => ['event_type'],
+      'recipient'  => ['recipient'],
+      'message_id' => ['message_id'],
+    ],
+  ];
+  return $schema;
+}

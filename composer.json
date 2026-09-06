@@ -1,0 +1,33 @@
+{
+    "name": "drupal/postmark_webhooks",
+    "description": "Receive Postmark bounce, spam, and delivery webhooks and suppress outbound Drupal mail.",
+    "type": "drupal-module",
+    "keywords": [
+        "Drupal",
+        "Postmark",
+        "webhooks",
+        "mail"
+    ],
+    "homepage": "https://www.drupal.org/project/postmark_webhooks",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Jeremy Michael Cerda",
+            "email": "jmcerda@wilkesliberty.com",
+            "role": "Maintainer"
+        },
+        {
+            "name": "Wilkes & Liberty, LLC",
+            "homepage": "https://wilkesliberty.com",
+            "role": "Sponsor"
+        }
+    ],
+    "support": {
+        "issues": "https://www.drupal.org/project/issues/postmark_webhooks",
+        "source": "https://git.drupalcode.org/project/postmark_webhooks"
+    },
+    "require": {
+        "php": ">=8.3",
+        "drupal/core": "^10.3 || ^11"
+    }
+}
