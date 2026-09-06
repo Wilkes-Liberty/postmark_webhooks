@@ -22,7 +22,7 @@ Database::addConnectionInfo('default', 'default', $input['database']);
 $database = Database::getConnection();
 new Settings(['postmark_webhooks.webhook_secret' => 'concurrency-test']);
 fwrite(STDOUT, "ready\n");
-// Both workers wait until the parent has observed both ready signals.
+// Every worker waits until the parent has observed all ready signals.
 fgets(STDIN);
 if (isset($input['purge_before'])) {
   $retention = new EventRetention($database);
