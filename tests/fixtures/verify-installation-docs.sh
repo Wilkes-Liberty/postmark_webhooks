@@ -60,9 +60,10 @@ install_site() {
     --account-pass=fixture-only \
     --site-name=PostmarkDocs
   chmod u+w "$root/web/sites/default/settings.php"
+  # Disposable fixture only. Never copy a host POSTMARK_* token into /tmp.
   cat >> "$root/web/sites/default/settings.php" <<'PHP'
 
-$settings['postmark_webhooks.webhook_secret'] = getenv('POSTMARK_WEBHOOK_SECRET') ?: 'docs-walkthrough-only';
+$settings['postmark_webhooks.webhook_secret'] = 'docs-walkthrough-only';
 PHP
   chmod u-w "$root/web/sites/default/settings.php"
 }
