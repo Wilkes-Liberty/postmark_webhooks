@@ -115,6 +115,11 @@ class PostmarkWebhookController extends ControllerBase {
         'description' => mb_substr($data['Description'] ?? $data['Name'] ?? '', 0, 512),
         'payload' => NULL,
       ];
+      if ($event['event_type'] === 'SubscriptionChange') {
+        $event['suppress_sending'] = (int) $data['SuppressSending'];
+        $event['suppression_reason'] = $data['SuppressionReason'] ?? '';
+        $event['origin'] = $data['Origin'];
+      }
       $database->insert('postmark_events')->fields($event)->execute();
       $this->suppressionStore->record($event);
     }
