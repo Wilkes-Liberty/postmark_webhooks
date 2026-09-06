@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\Tests\postmark_webhooks\Kernel;
 
 use Drupal\Core\Site\Settings;
+use Drupal\Core\Database\IntegrityConstraintViolationException;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\postmark_webhooks\Controller\PostmarkWebhookController;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
@@ -166,6 +167,128 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
       ->execute()
       ->fetchField();
     $this->assertTrue($payload === NULL || $payload === '', 'The raw Postmark body must not be stored.');
+  }
+
+  /**
+   * Different events and recipients of one message must all survive retries.
+   */
+  public function testEventIdentityPreservesDistinctEvents(): void {
+    $this->setSecret(self::SECRET);
+    $events = [
+      ['RecordType' => 'Delivery', 'Recipient' => 'x@example.com'],
+      ['RecordType' => 'SpamComplaint', 'Email' => 'x@example.com', 'ID' => 10],
+      ['RecordType' => 'SpamComplaint', 'Email' => 'other@example.com', 'ID' => 10],
+      ['RecordType' => 'SpamComplaint', 'Email' => 'x@example.com', 'ID' => 11],
+      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'BouncedAt' => '2026-09-01T00:00:00Z'],
+      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'BouncedAt' => '2026-09-02T00:00:00Z'],
+      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'ServerID' => 2],
+      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'MessageStream' => 'broadcast'],
+    ];
+    foreach ($events as $event) {
+      $body = json_encode($event + ['MessageID' => 'shared-message']);
+      for ($retry = 0; $retry < 2; $retry++) {
+        $this->assertSame(200, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+      }
+    }
+    $this->assertSame(count($events), $this->eventCount());
+  }
+
+  /**
+   * Identical events without a message ID are still idempotent.
+   */
+  public function testMissingMessageIdRetries(): void {
+    $this->setSecret(self::SECRET);
+    $body = json_encode(['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'ID' => 42]);
+    $this->receive($this->request(self::SECRET, $body));
+    $this->receive($this->request(self::SECRET, $body));
+    $this->assertSame(1, $this->eventCount());
+  }
+
+  /**
+   * Other integrity failures are not acknowledged as retries.
+   */
+  public function testUnrelatedConstraintFailurePropagates(): void {
+    $this->setSecret(self::SECRET);
+    $this->container->get('database')->schema()->addUniqueKey('postmark_events', 'test_recipient', ['recipient']);
+    $this->receive($this->request(self::SECRET));
+    $this->expectException(IntegrityConstraintViolationException::class);
+    $body = json_encode(['RecordType' => 'Delivery', 'Recipient' => 'x@example.com', 'MessageID' => 'different']);
+    $this->receive($this->request(self::SECRET, $body));
+  }
+
+  /**
+   * The upgrade preserves legacy duplicates and their suppression evidence.
+   */
+  public function testUpgradePreservesLegacyRows(): void {
+    $database = $this->container->get('database');
+    $schema = $database->schema();
+    $schema->dropUniqueKey('postmark_events', 'event_key');
+    $schema->dropField('postmark_events', 'event_key');
+    for ($i = 0; $i < 2; $i++) {
+      $database->insert('postmark_events')->fields([
+        'created' => 1,
+        'event_type' => 'SpamComplaint',
+        'recipient' => 'x@example.com',
+        'message_id' => 'legacy',
+      ])->execute();
+    }
+    \Drupal::moduleHandler()->loadInclude('postmark_webhooks', 'install');
+    postmark_webhooks_update_10001();
+    postmark_webhooks_update_10001();
+    $this->assertSame(2, $this->eventCount());
+    $this->assertSame(2, (int) $database->select('postmark_events')->isNull('event_key')->countQuery()->execute()->fetchField());
+    $this->setSecret(self::SECRET);
+    $this->receive($this->request(self::SECRET));
+    $this->receive($this->request(self::SECRET));
+    $this->assertSame(3, $this->eventCount());
+  }
+
+  /**
+   * Independent concurrent receivers commit one event and acknowledge both.
+   */
+  public function testConcurrentRetries(): void {
+    $workers = [];
+    $input = json_encode([
+      'root' => DRUPAL_ROOT,
+      'database' => $this->container->get('database')->getConnectionOptions(),
+    ]);
+    $script = dirname(__DIR__, 2) . '/fixtures/concurrent-receiver.php';
+    try {
+      for ($i = 0; $i < 2; $i++) {
+        $process = proc_open([PHP_BINARY, $script], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $this->assertIsResource($process);
+        $workers[] = [$process, $pipes];
+        fwrite($pipes[0], $input . "\n");
+      }
+      foreach ($workers as [, $pipes]) {
+        stream_set_timeout($pipes[1], 20);
+        $this->assertSame("ready\n", fgets($pipes[1]));
+      }
+      foreach ($workers as [, $pipes]) {
+        fwrite($pipes[0], "go\n");
+        fclose($pipes[0]);
+      }
+      foreach ($workers as [$process, $pipes]) {
+        $this->assertSame('200', stream_get_contents($pipes[1]), stream_get_contents($pipes[2]));
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $this->assertSame(0, proc_close($process));
+      }
+      $this->assertSame(1, $this->eventCount());
+    }
+    finally {
+      foreach ($workers as [$process, $pipes]) {
+        foreach ($pipes as $pipe) {
+          if (is_resource($pipe)) {
+            fclose($pipe);
+          }
+        }
+        if (is_resource($process)) {
+          proc_terminate($process);
+          proc_close($process);
+        }
+      }
+    }
   }
 
 }

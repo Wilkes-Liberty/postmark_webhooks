@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- #3621119: Preserve distinct webhook events and recipients with a versioned event identity.
+- #3621120: Enforce retry deduplication atomically, preserving legacy rows during upgrade and propagating unrelated database failures.
+
 ## [1.0.0-alpha1] - 2026-09-05
 
 - Initial standalone Postmark Webhooks release in the Chronicle package group.

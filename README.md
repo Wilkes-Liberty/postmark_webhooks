@@ -81,8 +81,8 @@ recipient, bounce type and description. The reserved `payload` column remains
 NULL: raw webhook JSON is not stored. Treat the event table as personal data
 and restrict database access and backups accordingly.
 
-Sequential retries with the same nonempty MessageID return **200** without
-inserting another row. Requests without a MessageID are recorded separately.
+Retries with the same event identity return **200** without inserting another
+row, including concurrent retries. See the identity contract below.
 Malformed JSON returns **400**. Authentication is checked before parsing.
 
 ## Known limitations
@@ -91,9 +91,6 @@ Malformed JSON returns **400**. Authentication is checked before parsing.
   through those paths is **not suppressed** by this module. Verify your mail
   backend uses Drupal's mail manager; no Symfony Mailer event subscriber ships
   in this release.
-- MessageID deduplication is global, not per event type. A later event sharing
-  an earlier event's MessageID is ignored. Concurrent retries are not protected
-  by a unique database constraint.
 - Suppression is evaluated for one recipient, optionally with a display name.
   Multi-recipient To, Cc and Bcc lists are not individually filtered.
 - This is an event receiver, not an inbound email parser or mail sender. It
@@ -109,7 +106,8 @@ SIMPLETEST_DB=pgsql://user:password@localhost/database vendor/bin/phpunit -c web
 ```
 
 Kernel coverage includes authentication, missing secret, malformed JSON,
-MessageID retries, NULL payload, retention and case-insensitive suppression.
+event identity, concurrent retries, legacy upgrades, unrelated database failures,
+NULL payload, retention and case-insensitive suppression.
 
 ## Support and license
 
@@ -118,3 +116,25 @@ Source: [git.drupalcode.org](https://git.drupalcode.org/project/postmark_webhook
 
 Maintainer: Jeremy Michael Cerda. Sponsor: [Wilkes & Liberty, LLC](https://wilkesliberty.com).
 Licensed under GPL-2.0-or-later; see [LICENSE.txt](LICENSE.txt).
+
+## Event identity and retries
+
+New events use a unique SHA-256 identity key. Identity includes the record type,
+normalized recipient, and supplied server and message stream. A provider `ID`
+identifies the event when present. Otherwise the fallback uses `MessageID`, bounce
+`Type`, and the applicable provider timestamp (`BouncedAt`, `DeliveredAt`,
+`ReceivedAt`, or `ChangedAt`). Distinct kinds, recipients, sources, provider IDs,
+and fallback timestamps remain separate. A retry with the same identity receives
+HTTP 200 without adding an event. Unrelated database failures remain failures so
+the provider can retry. No raw webhook payload is retained.
+
+If the provider supplies neither an event ID nor a timestamp, otherwise identical
+fallback fields cannot distinguish a new event from a retry. Source fields in
+this key distinguish records; they are not authenticated source-policy controls.
+Retry deduplication lasts while the event row is retained.
+
+Run database updates when upgrading from alpha1. The upgrade preserves all legacy
+rows, including duplicates, with a NULL identity key because alpha1 did not retain
+the identifiers needed to reconstruct reliable identities. A replay of a legacy
+event can therefore add one new keyed row. Events previously discarded by
+message-only deduplication cannot be recovered from the local database.

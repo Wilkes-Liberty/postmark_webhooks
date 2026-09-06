@@ -4,6 +4,8 @@ namespace Drupal\postmark_webhooks\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Database\IntegrityConstraintViolationException;
+use Drupal\postmark_webhooks\Event\EventIdentity;
 use Drupal\Component\Datetime\TimeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Site\Settings;
@@ -74,29 +76,34 @@ class PostmarkWebhookController extends ControllerBase {
     $message_id = (string) ($data['MessageID'] ?? '');
 
     $database = $this->database;
-    if ($message_id !== '') {
+    $event_key = EventIdentity::key($data, $recipient);
+    // Use a savepoint when called inside another transaction.
+    // PostgreSQL must roll back a unique violation before any further query.
+    $transaction = $database->startTransaction();
+    try {
+      $database->insert('postmark_events')->fields([
+        'event_key' => $event_key,
+        'created' => $this->time->getRequestTime(),
+        'event_type' => $data['RecordType'] ?? '',
+        'message_id' => $message_id,
+        'recipient' => $recipient,
+        'bounce_type' => $data['Type'] ?? '',
+        'description' => mb_substr($data['Description'] ?? $data['Name'] ?? '', 0, 512),
+        'payload' => NULL,
+      ])->execute();
+    }
+    catch (IntegrityConstraintViolationException $exception) {
+      $transaction->rollBack();
+      // A different constraint failure is not a successful webhook delivery.
       $exists = $database->select('postmark_events', 'pe')
         ->fields('pe', ['eid'])
-        ->condition('message_id', $message_id)
-        ->range(0, 1)
-        ->execute()
-        ->fetchField();
-      if ($exists) {
-        return new Response('OK', 200);
+        ->condition('event_key', $event_key)
+        ->execute()->fetchField();
+      if (!$exists) {
+        throw $exception;
       }
     }
-
-    $database->insert('postmark_events')->fields([
-      'created'     => $this->time->getRequestTime(),
-      'event_type'  => $data['RecordType'] ?? '',
-      'message_id'  => $message_id,
-      'recipient'   => $recipient,
-      'bounce_type' => $data['Type'] ?? '',
-      'description' => mb_substr(
-        $data['Description'] ?? $data['Name'] ?? '', 0, 512,
-      ),
-      'payload'     => NULL,
-    ])->execute();
+    unset($transaction);
 
     return new Response('OK', 200);
   }

@@ -5,6 +5,8 @@
  * Install and schema hooks for the Postmark Webhooks module.
  */
 
+use Drupal\Core\Database\SchemaObjectExistsException;
+
 /**
  * Implements hook_schema().
  */
@@ -12,6 +14,12 @@ function postmark_webhooks_schema() {
   $schema['postmark_events'] = [
     'description' => 'Log of Postmark bounce, spam, and delivery webhook events.',
     'fields' => [
+      'event_key' => [
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => FALSE,
+        'description' => 'Versioned event identity digest; NULL for legacy events.',
+      ],
       'eid' => [
         'type' => 'serial',
         'unsigned' => TRUE,
@@ -67,6 +75,7 @@ function postmark_webhooks_schema() {
       ],
     ],
     'primary key' => ['eid'],
+    'unique keys' => ['event_key' => ['event_key']],
     'indexes' => [
       'created'    => ['created'],
       'event_type' => ['event_type'],
@@ -75,4 +84,26 @@ function postmark_webhooks_schema() {
     ],
   ];
   return $schema;
+}
+
+/**
+ * Adds atomic event identity while preserving all legacy event evidence.
+ */
+function postmark_webhooks_update_10001(): void {
+  $schema = \Drupal::database()->schema();
+  $field = [
+    'type' => 'varchar',
+    'length' => 64,
+    'not null' => FALSE,
+    'description' => 'Versioned event identity digest; NULL for legacy events.',
+  ];
+  if (!$schema->fieldExists('postmark_events', 'event_key')) {
+    $schema->addField('postmark_events', 'event_key', $field);
+  }
+  try {
+    $schema->addUniqueKey('postmark_events', 'event_key', ['event_key']);
+  }
+  catch (SchemaObjectExistsException $exception) {
+    // The driver checks its own unique-key representation on resumed updates.
+  }
 }
