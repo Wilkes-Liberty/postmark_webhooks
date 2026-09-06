@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621132: Add explicit source-scoped policy and settings-bound intake source restrictions while preserving the site-wide default.
+
 - #3621134: Bound each retention cleanup to 250 rows without changing durable suppression.
 
 - #3621133: Accept a settings-only previous webhook secret until a fixed expiry; reject malformed active credentials safely.
