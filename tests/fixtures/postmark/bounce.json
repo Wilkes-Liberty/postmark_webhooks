@@ -1,0 +1,21 @@
+{
+  "RecordType": "Bounce",
+  "ID": 987654321,
+  "MessageStream": "outbound",
+  "ServerID": 123,
+  "Type": "HardBounce",
+  "TypeCode": 1,
+  "Name": "Synthetic hard bounce",
+  "MessageID": "00000000-0000-4000-8000-000000000001",
+  "Email": "fixture-bounce@example.com",
+  "From": "sender@example.com",
+  "BouncedAt": "2020-01-01T12:00:00.1234567Z",
+  "Description": "Synthetic provider text excluded from storage.",
+  "Details": "Synthetic details",
+  "Inactive": true,
+  "CanActivate": true,
+  "DumpAvailable": false,
+  "Metadata": {
+    "fixture": "synthetic"
+  }
+}

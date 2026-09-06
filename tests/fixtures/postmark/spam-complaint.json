@@ -1,0 +1,15 @@
+{
+  "RecordType": "SpamComplaint",
+  "ID": 987654322,
+  "ServerID": 123,
+  "MessageStream": "outbound",
+  "MessageID": "00000000-0000-4000-8000-000000000002",
+  "Email": "fixture-complaint@example.com",
+  "Name": "Synthetic complaint",
+  "Description": "Synthetic complaint text excluded from storage.",
+  "Inactive": true,
+  "DumpAvailable": false,
+  "Metadata": {
+    "fixture": "synthetic"
+  }
+}

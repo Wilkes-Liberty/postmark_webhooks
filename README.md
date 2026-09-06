@@ -263,7 +263,8 @@ soft-bounce windows 0–365 days, complaint windows and retention 0–3650 days.
   adapter described below. Direct Symfony transports outside Drupal Mailer Plus
   remain outside this integration; callers must use the shared policy themselves.
 - This is an event receiver, not an inbound email parser or mail sender. It
-  does not synchronize a Postmark server's suppression list.
+  The optional reconciliation module imports reviewed suppression evidence; it
+  does not automatically synchronize or alter a provider suppression list.
 
 ## Development
 
@@ -282,11 +283,16 @@ SIMPLETEST_BASE_URL=http://127.0.0.1:8888 SIMPLETEST_DB=pgsql://user:password@lo
 
 For HTTP tests, start a disposable site server from the Drupal web root with
 `PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8888 -t . .ht.router.php`. CI runs
-this server and the full suite on both core versions.
+this server and the full suite on both core versions with PostgreSQL 16. The
+current database verification target is PostgreSQL; MySQL and SQLite query plans
+and concurrency behavior have not been verified by this project.
 
 HTTP coverage includes settings permissions, secret exclusion, Basic Auth and
 retry handling through the real route. Routing-context tests cover root,
-subdirectory and trusted proxy URL generation.
+subdirectory and trusted proxy URL generation. A separate installed-site HTTP
+fixture verifies actual subdirectory Basic Auth, idempotent intake, authenticated
+settings and prefixed preview links. Drush commands are discovered on an installed
+site, and the optional mailer/reconciliation integrations have their own CI steps.
 Kernel coverage includes authentication, missing secret, malformed JSON,
 event identity, concurrent retries, legacy upgrades, unrelated database failures,
 NULL payload, retention and case-insensitive suppression.

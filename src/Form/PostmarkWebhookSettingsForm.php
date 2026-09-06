@@ -48,6 +48,8 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
     $config = $this->config('postmark_webhooks.settings');
     $diagnostics = $this->preview->diagnostics();
     $form['#cache']['max-age'] = 0;
+    $form['#attributes']['class'][] = 'postmark-webhooks-operator';
+    $form['#attached']['library'][] = 'postmark_webhooks/operator';
     $form['diagnostics'] = ['#type' => 'details', '#title' => $this->t('Effective status'), '#open' => TRUE];
     $form['diagnostics']['secret'] = [
       '#type' => 'item',
