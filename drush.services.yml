@@ -1,6 +1,0 @@
-services:
-  postmark_webhooks.commands:
-    class: \Drupal\postmark_webhooks\Commands\PostmarkWebhookCommands
-    arguments: ['@config.factory', '@database']
-    tags:
-      - { name: drush.command }

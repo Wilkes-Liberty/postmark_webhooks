@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621131: Add read-only policy previews, structured Drush diagnostics and privacy-safe atomic intake counters.
+
 - #3621128: Add an optional Mailer Plus adapter that checks final recipients before native and compatibility transport.
 
 - #3621129: Apply ordered subscription suppression and source-specific hard-bounce recovery without clearing consent protections.

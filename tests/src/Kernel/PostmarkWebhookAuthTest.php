@@ -43,7 +43,7 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
    */
   protected function setUp(): void {
     parent::setUp();
-    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression', 'postmark_intake_metrics']);
     $this->installConfig(['postmark_webhooks']);
   }
 
@@ -307,6 +307,9 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
         $this->assertSame(0, proc_close($process));
       }
       $this->assertSame(count(array_unique($ids)), $this->eventCount());
+      $metrics = $this->container->get('postmark_webhooks.intake_metrics')->snapshot();
+      $this->assertSame(count(array_unique($ids)), $metrics['accepted']['total']);
+      $this->assertSame(count($ids) - count(array_unique($ids)), $metrics['duplicate']['total']);
       $this->assertSame(1, (int) $this->container->get('database')->select('postmark_suppression')->countQuery()->execute()->fetchField());
     }
     finally {
@@ -518,7 +521,10 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
     $settings = Settings::getAll();
     $time = $this->createMock(TimeInterface::class);
     $time->method('getRequestTime')->willReturn(100);
-    $time->method('getCurrentTime')->willReturnOnConsecutiveCalls(199, 199, 200, 201, 201);
+    $now = 199;
+    $time->method('getCurrentTime')->willReturnCallback(static function () use (&$now): int {
+      return $now;
+    });
     $this->container->set('datetime.time', $time);
     new Settings([
       'postmark_webhooks.webhook_secret' => self::SECRET,
@@ -526,6 +532,7 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
     ] + $settings);
     $this->assertSame(200, $this->receive($this->request(self::SECRET))->getStatusCode());
     $this->assertSame(200, $this->receive($this->request('previous-test-only'))->getStatusCode());
+    $now = 200;
     $this->assertSame(401, $this->receive($this->request('previous-test-only'))->getStatusCode());
     $this->assertSame(200, $this->receive($this->request(self::SECRET))->getStatusCode());
     new Settings(['postmark_webhooks.webhook_secret' => self::SECRET] + $settings);

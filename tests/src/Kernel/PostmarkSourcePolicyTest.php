@@ -33,7 +33,7 @@ class PostmarkSourcePolicyTest extends KernelTestBase {
    */
   protected function setUp(): void {
     parent::setUp();
-    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression', 'postmark_intake_metrics']);
     $this->installConfig(['postmark_webhooks']);
   }
 

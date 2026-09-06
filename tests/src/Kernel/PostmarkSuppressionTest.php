@@ -30,7 +30,7 @@ class PostmarkSuppressionTest extends KernelTestBase {
   protected function setUp(): void {
     parent::setUp();
     // Create the postmark_events table from the module's hook_schema().
-    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression', 'postmark_intake_metrics']);
     // Install the default module settings (enabled, suppression windows).
     $this->installConfig(['postmark_webhooks']);
     // Load the .module file so its functions are available.

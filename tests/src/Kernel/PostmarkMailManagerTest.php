@@ -25,7 +25,7 @@ class PostmarkMailManagerTest extends KernelTestBase {
    */
   protected function setUp(): void {
     parent::setUp();
-    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression', 'postmark_intake_metrics']);
     $this->installConfig(['postmark_webhooks']);
     $this->config('system.site')->set('mail', 'sender@example.com')->save();
     $this->config('system.mail')->set('interface', ['default' => 'test_mail_collector'])->save();

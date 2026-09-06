@@ -5,11 +5,27 @@ namespace Drupal\postmark_webhooks\Form;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
+use Drupal\postmark_webhooks\Diagnostics\PolicyPreview;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Configures Postmark webhook suppression settings.
  */
 class PostmarkWebhookSettingsForm extends ConfigFormBase {
+
+  /**
+   * Read-only effective diagnostics.
+   */
+  protected PolicyPreview $preview;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    $instance = parent::create($container);
+    $instance->preview = $container->get('postmark_webhooks.policy_preview');
+    return $instance;
+  }
 
   /**
    * {@inheritdoc}
@@ -30,6 +46,35 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $config = $this->config('postmark_webhooks.settings');
+    $diagnostics = $this->preview->diagnostics();
+    $form['#cache']['max-age'] = 0;
+    $form['diagnostics'] = ['#type' => 'details', '#title' => $this->t('Effective status'), '#open' => TRUE];
+    $form['diagnostics']['secret'] = [
+      '#type' => 'item',
+      '#title' => $this->t('Webhook credential'),
+      '#markup' => $diagnostics['secret_configured'] ? $this->t('Configured') : $this->t('Missing or invalid; intake is unavailable'),
+    ];
+    $form['diagnostics']['coverage'] = [
+      '#type' => 'item',
+      '#title' => $this->t('Mail coverage'),
+      '#markup' => $diagnostics['coverage']['mailer_plus'] ? $this->t('Drupal core mail and Mailer Plus are protected when suppression is enabled. Direct Symfony transports are not covered.') : $this->t('Drupal core mail is protected when suppression is enabled. Native Mailer Plus requires the optional Postmark Webhooks Mailer adapter. Direct Symfony transports are not covered.'),
+    ];
+    $accepted = $diagnostics['intake']['accepted'];
+    $form['diagnostics']['intake'] = [
+      '#type' => 'item',
+      '#title' => $this->t('Intake since diagnostics installation'),
+      '#markup' => $this->t('Accepted: @accepted. Duplicate retries: @duplicates. Authenticated rejections: @rejected. Last accepted: @last.', [
+        '@accepted' => $accepted['total'],
+        '@duplicates' => $diagnostics['intake']['duplicate']['total'],
+        '@rejected' => $diagnostics['intake']['rejected']['total'],
+        '@last' => $accepted['last_seen'] ? gmdate('Y-m-d H:i:s \U\T\C', $accepted['last_seen']) : $this->t('None recorded'),
+      ]),
+    ];
+    $form['diagnostics']['preview'] = [
+      '#type' => 'link',
+      '#title' => $this->t('Preview policy without sending mail'),
+      '#url' => Url::fromRoute('postmark_webhooks.preview'),
+    ];
 
     $webhook_url = Url::fromRoute('postmark_webhooks.receive', [], ['absolute' => TRUE])->toString();
     $form['webhook_url'] = [

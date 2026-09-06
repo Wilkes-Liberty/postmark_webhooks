@@ -6,6 +6,7 @@
  */
 
 use Drupal\Component\Datetime\Time;
+use Drupal\postmark_webhooks\Diagnostics\IntakeMetrics;
 use Drupal\postmark_webhooks\Retention\EventRetention;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Site\Settings;
@@ -36,5 +37,5 @@ $request = Request::create('/api/webhooks/postmark', 'POST', [], [], [], [], jso
   'Type' => 'HardBounce',
 ]));
 $request->headers->set('Authorization', 'Basic ' . base64_encode('postmark:concurrency-test'));
-$controller = new PostmarkWebhookController($database, new Time(new RequestStack()), new SuppressionStore($database));
+$controller = new PostmarkWebhookController($database, new Time(new RequestStack()), new SuppressionStore($database), new IntakeMetrics($database));
 fwrite(STDOUT, (string) $controller->receive($request)->getStatusCode());
