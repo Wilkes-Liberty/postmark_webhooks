@@ -70,10 +70,11 @@ final class SourcePolicy {
     }
     $match = FALSE;
     foreach ($allowed as $source) {
-      if (!is_array($source) || !is_string($source['server_id'] ?? NULL)
+      if (!is_array($source) || (!is_string($source['server_id'] ?? NULL) && !is_int($source['server_id'] ?? NULL))
         || !is_string($source['message_stream'] ?? NULL)) {
         throw new \InvalidArgumentException('Invalid allowed source.');
       }
+      $source['server_id'] = (string) $source['server_id'];
       new SourceContext($source['server_id'], $source['message_stream']);
       $match = $match || ($source['server_id'] === (string) ($data['ServerID'] ?? '')
         && $source['message_stream'] === ($data['MessageStream'] ?? ''));
