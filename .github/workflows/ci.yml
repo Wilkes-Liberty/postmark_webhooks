@@ -168,7 +168,7 @@ jobs:
       - name: Composer security audit
         if: matrix.audit
         working-directory: /tmp/postmark-ci
-        run: composer audit --no-interaction --abandoned=ignore
+        run: composer audit --no-interaction --abandoned=report
       - name: Coding standards
         run: /tmp/postmark-ci/vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install "$GITHUB_WORKSPACE"
       - name: Start disposable HTTP server

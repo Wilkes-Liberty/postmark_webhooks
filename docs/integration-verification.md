@@ -16,13 +16,14 @@ runs Drupal coding standards, the kernel/HTTP suite (including upgrades), option
 reconciliation, Drush discovery and a real `/subdirectory` HTTP fixture on
 PostgreSQL 16. Mailer jobs also run native and compatibility transport cancellation.
 
-Supported jobs use Composer's default insecure-package block and `composer audit`
-(security advisories only; abandoned packages are reported but do not fail the
-job). Exact resolved versions come from the CI summary for each run, not from
-this file.
+Supported jobs use Composer's default insecure-package block and `composer audit
+--abandoned=report`. Security advisories fail the job; abandoned packages are
+printed and do not fail it. Exact resolved versions come from the CI summary
+for each run, not from this file.
 
 | Job | Drupal | PHP | Mailer Plus | Audit |
 | --- | --- | --- | --- | --- |
+| d10.3-php8.3-floor | 10.3.* | 8.3 | none | isolated exception |
 | d10.6-php8.3 | 10.6.* | 8.3 | none | yes |
 | d10.6-php8.3-mailer-1.6 | 10.6.* | 8.3 | 1.6.2 | yes |
 | d10.6-php8.4-mailer-2.0 | 10.6.* | 8.4 | 2.0.2 | yes |
