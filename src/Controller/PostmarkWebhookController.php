@@ -118,7 +118,7 @@ class PostmarkWebhookController extends ControllerBase {
         'message_id' => $message_id,
         'recipient' => $recipient,
         'bounce_type' => $data['Type'] ?? '',
-        'description' => mb_substr($data['Description'] ?? $data['Name'] ?? '', 0, 512),
+        'description' => '',
         'payload' => NULL,
       ];
       if ($event['event_type'] === 'SubscriptionChange') {

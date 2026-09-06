@@ -1,4 +1,7 @@
 services:
+  postmark_webhooks.recipient_privacy:
+    class: Drupal\postmark_webhooks\Operator\RecipientPrivacy
+    arguments: ['@database', '@postmark_webhooks.operator_audit', '@email.validator', '@datetime.time']
   postmark_webhooks.operator_audit:
     class: Drupal\postmark_webhooks\Operator\OperatorAudit
     arguments: ['@database']

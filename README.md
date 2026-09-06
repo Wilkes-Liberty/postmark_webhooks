@@ -1,5 +1,31 @@
 # Postmark Webhooks
 
+## Recipient privacy controls
+
+The Reports menu has separate export and history-erasure forms. Grant
+`export postmark recipient data` and `erase postmark recipient history` only to
+operators authorized for those actions; neither permission grants the other.
+Exports stream normalized event history and minimal current suppression as a JSON
+attachment, in database pages of 250 rows. The export request is audited. Its
+event boundary excludes later intake; current suppression can change while an
+export is streamed. Protect downloaded files as recipient data.
+
+History erasure requires confirmation and processes at most 250 rows per batch.
+Each completed deletion batch commits with its audit record. An interrupted
+operation can be reviewed and retried. Events received after the confirmation
+snapshot remain for a later review.
+
+Erasure deliberately retains the normalized mailbox, source, reason, evidence
+digest and occurrence/time basis needed to prevent unwanted mail. It also retains
+operator audit records. Deleting history must not silently restore consent or
+reactivate delivery. Operators must account separately for backups, provider
+records, exports and site-specific retention policy; this control does not claim
+irreversible erasure of external copies.
+
+New intake stores no provider description or raw body. Update 10006 removes those
+legacy fields in restartable batches without changing normalized history or
+suppression state. The export excludes those fields even before that update runs.
+
 ## Suppression inspector and recovery
 
 The Reports menu includes an exact-address suppression inspector. Grant

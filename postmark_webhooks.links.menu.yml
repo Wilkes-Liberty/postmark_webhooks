@@ -10,3 +10,13 @@ postmark_webhooks.inspector:
   description: 'Inspect exact-address suppression and review eligible recovery.'
   route_name: postmark_webhooks.inspector
   parent: system.admin_reports
+
+postmark_webhooks.recipient_export:
+  title: 'Export Postmark recipient data'
+  route_name: postmark_webhooks.recipient_export
+  parent: system.admin_reports
+
+postmark_webhooks.recipient_erase:
+  title: 'Erase Postmark recipient history'
+  route_name: postmark_webhooks.recipient_erase
+  parent: system.admin_reports

@@ -114,3 +114,30 @@ function _postmark_webhooks_suppression_reason(string $email, $config, ?SourceCo
   $label = $labels[$kind];
   return $label . ' (' . $type . ') on ' . date('Y-m-d', $decision->occurred);
 }
+
+/**
+ * Processes a confirmed history snapshot without deleting suppression evidence.
+ */
+function postmark_webhooks_erase_history_batch(string $recipient, int $maximum, int $uid, array &$context): void {
+  $actor = \Drupal::currentUser();
+  if ((int) $actor->id() !== $uid) {
+    throw new \RuntimeException('The confirming operator must complete this batch.');
+  }
+  $privacy = \Drupal::service('postmark_webhooks.recipient_privacy');
+  $count = $privacy->eraseBatch($recipient, $maximum, $actor);
+  $context['results']['deleted'] = ($context['results']['deleted'] ?? 0) + $count;
+  $context['finished'] = $privacy->hasHistory($recipient, $maximum, $actor) ? 0 : 1;
+  $context['message'] = t('Erased @count history records. Suppression evidence remains.', ['@count' => $context['results']['deleted']]);
+}
+
+/**
+ * Reports completion without claiming erasure of retained or external records.
+ */
+function postmark_webhooks_erase_history_finished(bool $success, array $results): void {
+  if ($success) {
+    \Drupal::messenger()->addStatus(t('Erased @count history records. Suppression evidence and audit records remain.', ['@count' => $results['deleted'] ?? 0]));
+  }
+  else {
+    \Drupal::messenger()->addError(t('History erasure did not finish. Completed batches remain audited; review and retry the remaining history.'));
+  }
+}

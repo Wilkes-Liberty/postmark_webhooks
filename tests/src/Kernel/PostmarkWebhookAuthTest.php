@@ -168,13 +168,20 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
    */
   public function testPayloadIsNotStored(): void {
     $this->setSecret(self::SECRET);
-    $this->receive($this->request(self::SECRET));
+    $body = json_encode([
+      'RecordType' => 'Bounce',
+      'Type' => 'HardBounce',
+      'Email' => 'x@example.com',
+      'Description' => 'Provider free text must not be retained.',
+    ]);
+    $this->receive($this->request(self::SECRET, $body));
     $payload = \Drupal::database()->select('postmark_events', 'pe')
       ->fields('pe', ['payload'])
       ->range(0, 1)
       ->execute()
       ->fetchField();
     $this->assertTrue($payload === NULL || $payload === '', 'The raw Postmark body must not be stored.');
+    $this->assertSame('', $this->container->get('database')->select('postmark_events', 'pe')->fields('pe', ['description'])->execute()->fetchField());
   }
 
   /**

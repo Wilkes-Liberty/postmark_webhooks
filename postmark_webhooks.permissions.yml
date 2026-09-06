@@ -8,3 +8,9 @@ recover postmark hard bounces:
   title: 'Recover Postmark hard bounces for a known source'
   description: 'Also requires the view permission. Does not release complaints or opt-outs.'
   restrict access: true
+export postmark recipient data:
+  title: 'Export Postmark recipient data'
+  restrict access: true
+erase postmark recipient history:
+  title: 'Erase Postmark recipient history while retaining suppression'
+  restrict access: true
