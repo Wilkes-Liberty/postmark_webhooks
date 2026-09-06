@@ -68,7 +68,8 @@ properties lost during Drupal form-cache serialization. HTTP regressions preserv
 the repeated-submit and CSRF contracts.
 
 These checks do not claim a complete screen-reader audit or production-theme
-certification. PostgreSQL is the measured database target; MySQL, MariaDB and
-SQLite query plans and concurrency behavior remain unverified. Direct Symfony
+certification. PostgreSQL 16 remains the default matrix. MySQL 8.4, MariaDB
+10.11 and SQLite run on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5; see
+[database-verification.md](database-verification.md). Direct Symfony
 transports and custom processors that mutate recipients after the adapter
 callback remain outside the documented adapter boundary.

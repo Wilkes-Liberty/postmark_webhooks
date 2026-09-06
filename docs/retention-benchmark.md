@@ -46,4 +46,6 @@ Legacy mixed-case evidence is normalized by the durable-state upgrade.
 Automated coverage includes batch boundaries, late older arrivals, current rows,
 retained suppression, and two independent cleanup processes racing with a webhook
 receiver. Both Drupal/PHP fixtures pass. Queries use Drupal's portable database
-API; this benchmark does not claim measured plans on MySQL or SQLite.
+API. Indexed cleanup and lookup are asserted on MySQL, MariaDB and SQLite in
+CI at a 3,000-row scale; see [database-verification.md](database-verification.md).
+This 100,000-row ANALYZE sample remains PostgreSQL-only.

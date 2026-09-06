@@ -284,11 +284,10 @@ SIMPLETEST_BASE_URL=http://127.0.0.1:8888 SIMPLETEST_DB=pgsql://user:password@lo
 For HTTP tests, start a disposable site server from the Drupal web root with
 `PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8888 -t . .ht.router.php`. CI runs
 this server and the full suite on Drupal 10.6, 11.3 and 11.4 with PostgreSQL 16,
-plus an isolated Drupal 10.3 compatibility-floor job. See
-[docs/integration-verification.md](docs/integration-verification.md) for the
-matrix and recorded versions. The current database verification target is
-PostgreSQL; MySQL and SQLite query plans and concurrency behavior have not been
-verified by this project.
+plus an isolated Drupal 10.3 compatibility-floor job. MySQL 8.4, MariaDB 10.11
+and SQLite run the same suite on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5.
+See [docs/integration-verification.md](docs/integration-verification.md) and
+[docs/database-verification.md](docs/database-verification.md).
 
 HTTP coverage includes settings permissions, secret exclusion, Basic Auth and
 retry handling through the real route. Routing-context tests cover root,
