@@ -5,11 +5,19 @@ declare(strict_types=1);
 namespace Drupal\Tests\postmark_webhooks\Kernel;
 
 use Drupal\Core\Site\Settings;
+use Drupal\Core\Config\ConfigEvents;
+use Drupal\Core\Config\ConfigImporter;
+use Drupal\Core\Config\ConfigImporterEvent;
+use Drupal\Core\Config\MemoryStorage;
+use Drupal\Core\Config\StorageComparer;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
+use Drupal\Core\Database\DatabaseExceptionWrapper;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\postmark_webhooks\Controller\PostmarkWebhookController;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * Kernel tests for the Postmark webhook HTTP Basic Auth controller.
@@ -35,7 +43,7 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
    */
   protected function setUp(): void {
     parent::setUp();
-    $this->installSchema('postmark_webhooks', ['postmark_events']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
     $this->installConfig(['postmark_webhooks']);
   }
 
@@ -179,10 +187,20 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
       ['RecordType' => 'SpamComplaint', 'Email' => 'x@example.com', 'ID' => 10],
       ['RecordType' => 'SpamComplaint', 'Email' => 'other@example.com', 'ID' => 10],
       ['RecordType' => 'SpamComplaint', 'Email' => 'x@example.com', 'ID' => 11],
-      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'BouncedAt' => '2026-09-01T00:00:00Z'],
-      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'BouncedAt' => '2026-09-02T00:00:00Z'],
-      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'ServerID' => 2],
-      ['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'MessageStream' => 'broadcast'],
+      [
+        'RecordType' => 'Bounce',
+        'Type' => 'HardBounce',
+        'Email' => 'x@example.com',
+        'BouncedAt' => '2026-09-01T00:00:00Z',
+      ],
+      [
+        'RecordType' => 'Bounce',
+        'Type' => 'HardBounce',
+        'Email' => 'x@example.com',
+        'BouncedAt' => '2026-09-02T00:00:00Z',
+      ],
+      ['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'x@example.com', 'ServerID' => 2],
+      ['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'x@example.com', 'MessageStream' => 'broadcast'],
     ];
     foreach ($events as $event) {
       $body = json_encode($event + ['MessageID' => 'shared-message']);
@@ -198,7 +216,7 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
    */
   public function testMissingMessageIdRetries(): void {
     $this->setSecret(self::SECRET);
-    $body = json_encode(['RecordType' => 'Bounce', 'Email' => 'x@example.com', 'ID' => 42]);
+    $body = json_encode(['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'x@example.com', 'ID' => 42]);
     $this->receive($this->request(self::SECRET, $body));
     $this->receive($this->request(self::SECRET, $body));
     $this->assertSame(1, $this->eventCount());
@@ -247,18 +265,32 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
    * Independent concurrent receivers commit one event and acknowledge both.
    */
   public function testConcurrentRetries(): void {
+    $this->runConcurrentReceivers([123, 123]);
+  }
+
+  /**
+   * Different events racing to create one suppression record keep both events.
+   */
+  public function testConcurrentSuppressionUpdates(): void {
+    $this->runConcurrentReceivers([123, 124]);
+  }
+
+  /**
+   * Runs two receiver processes against the test's committed schema.
+   */
+  private function runConcurrentReceivers(array $ids): void {
     $workers = [];
-    $input = json_encode([
+    $input = [
       'root' => DRUPAL_ROOT,
       'database' => $this->container->get('database')->getConnectionOptions(),
-    ]);
+    ];
     $script = dirname(__DIR__, 2) . '/fixtures/concurrent-receiver.php';
     try {
       for ($i = 0; $i < 2; $i++) {
         $process = proc_open([PHP_BINARY, $script], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         $this->assertIsResource($process);
         $workers[] = [$process, $pipes];
-        fwrite($pipes[0], $input . "\n");
+        fwrite($pipes[0], json_encode($input + ['event_id' => $ids[$i]]) . "\n");
       }
       foreach ($workers as [, $pipes]) {
         stream_set_timeout($pipes[1], 20);
@@ -274,7 +306,8 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
         fclose($pipes[2]);
         $this->assertSame(0, proc_close($process));
       }
-      $this->assertSame(1, $this->eventCount());
+      $this->assertSame(count(array_unique($ids)), $this->eventCount());
+      $this->assertSame(1, (int) $this->container->get('database')->select('postmark_suppression')->countQuery()->execute()->fetchField());
     }
     finally {
       foreach ($workers as [$process, $pipes]) {
@@ -289,6 +322,193 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
         }
       }
     }
+  }
+
+  /**
+   * Invalid payloads never leave partial or blank event rows.
+   */
+  public function testPayloadValidation(): void {
+    $this->setSecret(self::SECRET);
+    $base = ['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'x@example.com'];
+    $invalid = ['[]', '{}', 'null', '42', '"text"', '[{}]'];
+    foreach ([
+      ['RecordType' => NULL], ['RecordType' => []], ['RecordType' => ''],
+      ['Email' => NULL], ['Email' => []], ['Email' => 'invalid'],
+      ['Description' => []], ['Description' => str_repeat('x', 513)],
+      ['MessageID' => 1], ['MessageID' => str_repeat('x', 256)],
+      ['ID' => -1], ['ID' => 1.5], ['ID' => []], ['ServerID' => NULL],
+      ['MessageStream' => new \stdClass()], ['BouncedAt' => []],
+      ['Recipient' => 'different@example.com'], ['Type' => "bad\0value"],
+    ] as $changes) {
+      $invalid[] = json_encode($changes + $base);
+    }
+    foreach ($invalid as $body) {
+      $this->assertSame(400, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+    }
+    $oversized = json_encode($base + ['Content' => str_repeat('x', 1048576)]);
+    $this->assertSame(413, $this->receive($this->request(self::SECRET, $oversized))->getStatusCode());
+    $this->assertSame(0, $this->eventCount());
+    $valid = $base + [
+      'Description' => str_repeat('é', 512),
+      'ID' => '18446744073709551615',
+      'Metadata' => ['nested' => ['accepted' => TRUE]],
+    ];
+    $this->assertSame(200, $this->receive($this->request(self::SECRET, json_encode($valid)))->getStatusCode());
+    $metadata = 'leaf';
+    for ($depth = 0; $depth < 64; $depth++) {
+      $metadata = ['nested' => $metadata];
+    }
+    $valid['Metadata'] = $metadata;
+    $this->assertSame(200, $this->receive($this->request(self::SECRET, json_encode($valid)))->getStatusCode());
+    $this->assertSame(1, $this->eventCount());
+  }
+
+  /**
+   * An incomplete bounce must not consume the identity of a corrected retry.
+   */
+  public function testIncompleteBounceDoesNotClaimIdentity(): void {
+    $this->setSecret(self::SECRET);
+    $base = ['RecordType' => 'Bounce', 'Email' => 'retry@example.com', 'ID' => 987];
+    $policy = $this->container->get('postmark_webhooks.suppression_policy');
+    foreach ([[], ['Type' => ''], ['Type' => ' '], ['Type' => ' HardBounce'], ['Type' => "HardBounce\t"]] as $type) {
+      $body = json_encode($type + $base);
+      $this->assertSame(400, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+      $this->assertSame(0, $this->eventCount());
+      $this->assertFalse($policy->decide('retry@example.com')->suppressed);
+    }
+    $body = json_encode(['Type' => 'HardBounce'] + $base);
+    for ($retry = 0; $retry < 2; $retry++) {
+      $this->assertSame(200, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+    }
+    $this->assertSame(1, $this->eventCount());
+    $this->assertSame('hard:HardBounce', $policy->decide('retry@example.com')->reason);
+    $this->assertTrue($policy->decide('retry@example.com')->suppressed);
+  }
+
+  /**
+   * Future types remain log-only; other events need no bounce type.
+   */
+  public function testBounceTypeForwardCompatibility(): void {
+    $this->setSecret(self::SECRET);
+    foreach ([
+      ['RecordType' => 'Bounce', 'Type' => 'FutureBounce'],
+      ['RecordType' => 'Delivery'],
+      ['RecordType' => 'FutureEvent'],
+    ] as $event) {
+      $body = json_encode($event + ['Recipient' => 'future@example.com', 'ID' => 321]);
+      $this->assertSame(200, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+    }
+    $this->assertSame(3, $this->eventCount());
+    $this->assertFalse($this->container->get('postmark_webhooks.suppression_policy')->decide('future@example.com')->suppressed);
+  }
+
+  /**
+   * Configuration validation matches the admin form's numeric bounds.
+   */
+  public function testConfigWindowConstraints(): void {
+    $manager = $this->container->get('config.typed');
+    $data = $this->config('postmark_webhooks.settings')->getRawData();
+    foreach (['bounce_suppression_days' => 365, 'complaint_suppression_days' => 3650, 'event_retention_days' => 3650] as $key => $max) {
+      foreach ([-1, $max + 1] as $invalid) {
+        $violations = $manager->createFromNameAndData('postmark_webhooks.settings', [$key => $invalid] + $data)->validate();
+        $this->assertGreaterThan(0, count($violations));
+      }
+      $this->assertCount(0, $manager->createFromNameAndData('postmark_webhooks.settings', [$key => $max] + $data)->validate());
+    }
+  }
+
+  /**
+   * Import validation dispatch rejects invalid settings through the subscriber.
+   */
+  public function testConfigImportValidationSubscriber(): void {
+    $source = new MemoryStorage();
+    $target = new MemoryStorage();
+    $data = $this->config('postmark_webhooks.settings')->getRawData();
+    $source->write('postmark_webhooks.settings', ['bounce_suppression_days' => -1] + $data);
+    $target->write('postmark_webhooks.settings', $data);
+    $comparer = new StorageComparer($source, $target);
+    $comparer->createChangelist();
+    $importer = $this->getMockBuilder(ConfigImporter::class)
+      ->disableOriginalConstructor()
+      ->onlyMethods(['getStorageComparer', 'logError'])
+      ->getMock();
+    $importer->method('getStorageComparer')->willReturn($comparer);
+    $importer->expects($this->once())->method('logError');
+    $dispatcher = new EventDispatcher();
+    $dispatcher->addSubscriber($this->container->get('postmark_webhooks.config_import_validator'));
+    $dispatcher->dispatch(new ConfigImporterEvent($importer), ConfigEvents::IMPORT_VALIDATE);
+  }
+
+  /**
+   * Delayed events use occurrence time without resetting windows.
+   */
+  public function testProviderOccurrencePolicy(): void {
+    $this->setSecret(self::SECRET);
+    $now = \Drupal::time()->getCurrentTime();
+    $time = $this->createMock(TimeInterface::class);
+    $time->method('getRequestTime')->willReturn($now);
+    $time->method('getCurrentTime')->willReturn($now);
+    $this->container->set('datetime.time', $time);
+    $base = ['RecordType' => 'Bounce', 'Type' => 'SoftBounce', 'Email' => 'timed@example.com'];
+    $send = function (int $id, string $date) use ($base): int {
+      return $this->receive($this->request(self::SECRET, json_encode($base + ['ID' => $id, 'BouncedAt' => $date])))->getStatusCode();
+    };
+    $policy = $this->container->get('postmark_webhooks.suppression_policy');
+    $this->assertSame(200, $send(1, gmdate('c', $now - 60 * 86400)));
+    $this->assertFalse($policy->decide('timed@example.com')->suppressed);
+    $this->assertSame(200, $send(2, gmdate('c', $now - 86400)));
+    $new = $policy->decide('timed@example.com');
+    $this->assertTrue($new->suppressed);
+    $this->assertSame('provider', $new->timeBasis);
+    $this->assertSame($now + 29 * 86400, $new->expires);
+    $this->assertSame(200, $send(3, gmdate('c', $now - 20 * 86400)));
+    $this->assertSame($new->expires, $policy->decide('timed@example.com')->expires);
+    $this->assertSame(200, $send(4, gmdate('c', $now - 86400)));
+    $this->assertSame($new->expires, $policy->decide('timed@example.com')->expires);
+    $this->assertSame(400, $send(5, 'yesterday'));
+    $this->assertSame(400, $send(6, '2026-02-30T00:00:00Z'));
+    $this->assertSame(400, $send(7, gmdate('c', $now + 600)));
+    $this->assertSame(200, $send(8, gmdate('c', $now + 120)));
+    $this->assertSame($now, $policy->decide('timed@example.com')->occurred);
+    $this->assertSame('clamped', $policy->decide('timed@example.com')->timeBasis);
+  }
+
+  /**
+   * Failed state persistence rolls the event insert back for a safe retry.
+   */
+  public function testStateFailureRollsBackEvent(): void {
+    $this->setSecret(self::SECRET);
+    $database = $this->container->get('database');
+    $database->schema()->dropTable('postmark_suppression');
+    $this->expectException(DatabaseExceptionWrapper::class);
+    try {
+      $this->receive($this->request(self::SECRET));
+    }
+    finally {
+      $this->assertSame(0, $this->eventCount());
+    }
+  }
+
+  /**
+   * Long-running requests retain the same receipt and clamping reference.
+   */
+  public function testReceiptTimeIsConsistent(): void {
+    $this->setSecret(self::SECRET);
+    $time = $this->createMock(TimeInterface::class);
+    $time->method('getRequestTime')->willReturn(100);
+    $time->method('getCurrentTime')->willReturn(160);
+    $this->container->set('datetime.time', $time);
+    $body = json_encode([
+      'RecordType' => 'Bounce',
+      'Type' => 'SoftBounce',
+      'Email' => 'clock@example.com',
+      'BouncedAt' => gmdate('c', 150),
+    ]);
+    $this->assertSame(200, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+    $row = $this->container->get('database')->select('postmark_events')->fields('postmark_events')->execute()->fetchAssoc();
+    $this->assertSame(100, (int) $row['created']);
+    $this->assertSame(100, (int) $row['occurred']);
+    $this->assertSame('clamped', $row['time_basis']);
   }
 
 }

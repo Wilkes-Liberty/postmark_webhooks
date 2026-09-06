@@ -6,6 +6,9 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
 use Drupal\postmark_webhooks\Event\EventIdentity;
+use Drupal\postmark_webhooks\Event\WebhookPayload;
+use Drupal\postmark_webhooks\Event\EventTime;
+use Drupal\postmark_webhooks\Suppression\SuppressionStore;
 use Drupal\Component\Datetime\TimeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Site\Settings;
@@ -34,13 +37,14 @@ class PostmarkWebhookController extends ControllerBase {
   public function __construct(
     protected Connection $database,
     protected TimeInterface $time,
+    protected SuppressionStore $suppressionStore,
   ) {}
 
   /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    return new static($container->get('database'), $container->get('datetime.time'));
+    return new static($container->get('database'), $container->get('datetime.time'), $container->get('postmark_webhooks.suppression_store'));
   }
 
   /**
@@ -60,9 +64,15 @@ class PostmarkWebhookController extends ControllerBase {
       ]);
     }
 
-    $body = $request->getContent();
-    $data = json_decode($body, TRUE);
-    if (!is_array($data)) {
+    $body = stream_get_contents($request->getContent(TRUE), WebhookPayload::MAX_BYTES + 1);
+    if ($body === FALSE || strlen($body) > WebhookPayload::MAX_BYTES) {
+      return new Response('Payload Too Large', 413);
+    }
+    try {
+      $data = WebhookPayload::decode($body);
+      [$occurred, $time_basis] = EventTime::resolve($data, $this->time->getRequestTime());
+    }
+    catch (\JsonException | \InvalidArgumentException $exception) {
       return new Response('Bad Request', 400);
     }
 
@@ -81,7 +91,11 @@ class PostmarkWebhookController extends ControllerBase {
     // PostgreSQL must roll back a unique violation before any further query.
     $transaction = $database->startTransaction();
     try {
-      $database->insert('postmark_events')->fields([
+      $event = [
+        'occurred' => $occurred,
+        'time_basis' => $time_basis,
+        'server_id' => (string) ($data['ServerID'] ?? ''),
+        'message_stream' => $data['MessageStream'] ?? '',
         'event_key' => $event_key,
         'created' => $this->time->getRequestTime(),
         'event_type' => $data['RecordType'] ?? '',
@@ -90,7 +104,9 @@ class PostmarkWebhookController extends ControllerBase {
         'bounce_type' => $data['Type'] ?? '',
         'description' => mb_substr($data['Description'] ?? $data['Name'] ?? '', 0, 512),
         'payload' => NULL,
-      ])->execute();
+      ];
+      $database->insert('postmark_events')->fields($event)->execute();
+      $this->suppressionStore->record($event);
     }
     catch (IntegrityConstraintViolationException $exception) {
       $transaction->rollBack();
@@ -102,6 +118,10 @@ class PostmarkWebhookController extends ControllerBase {
       if (!$exists) {
         throw $exception;
       }
+    }
+    catch (\Throwable $exception) {
+      $transaction->rollBack();
+      throw $exception;
     }
     unset($transaction);
 

@@ -78,68 +78,15 @@ function _postmark_webhooks_redact_recipient(string $email): string {
  *     MailboxFull, MessageTooLarge
  *   Log-only (no suppression): Delivery, Open, Click, Subscribe, and unknowns.
  *
- * Recipient matching is case-insensitive (LOWER() on the stored column and
- * the looked-up address) so a send matches a bounce/complaint regardless of the
- * case each was recorded in, including pre-existing mixed-case rows
- * written before recipients were normalized on insert.
+ * Compatibility wrapper around the shared effective-decision service.
+ * Recipients are normalized before indexed durable-state lookup.
  */
 function _postmark_webhooks_suppression_reason(string $email, $config): ?string {
-  $db = \Drupal::database();
-  $now = \Drupal::time()->getRequestTime();
-
-  $hard_bounce_types = ['HardBounce', 'BadEmailAddress', 'ManuallyDeactivated', 'Unsubscribe'];
-  $soft_bounce_types = ['Transient', 'SoftBounce', 'DnsError', 'MailboxFull', 'MessageTooLarge'];
-  $spam_event_types  = ['SpamComplaint', 'SpamNotification'];
-
-  // ── Spam complaints ──────────────────────────────────────────────────────
-  $complaint_days = (int) $config->get('complaint_suppression_days');
-  $spam_query = $db->select('postmark_events', 'pe')
-    ->fields('pe', ['event_type', 'created'])
-    ->where('LOWER(pe.recipient) = LOWER(:email)', [':email' => $email])
-    ->condition('event_type', $spam_event_types, 'IN')
-    ->orderBy('created', 'DESC')
-    ->range(0, 1);
-  // 0 = permanent: no date filter. Positive = time-limited window.
-  if ($complaint_days > 0) {
-    $spam_query->condition('created', $now - ($complaint_days * 86400), '>=');
+  $decision = \Drupal::service('postmark_webhooks.suppression_policy')->decide($email);
+  if (!$decision->suppressed) {
+    return NULL;
   }
-  $spam = $spam_query->execute()->fetchObject();
-  if ($spam) {
-    return 'spam complaint (' . $spam->event_type . ') on ' . date('Y-m-d', $spam->created);
-  }
-
-  // ── Hard bounces (permanent) ─────────────────────────────────────────────
-  $hard = $db->select('postmark_events', 'pe')
-    ->fields('pe', ['bounce_type', 'created'])
-    ->where('LOWER(pe.recipient) = LOWER(:email)', [':email' => $email])
-    ->condition('event_type', 'Bounce')
-    ->condition('bounce_type', $hard_bounce_types, 'IN')
-    ->orderBy('created', 'DESC')
-    ->range(0, 1)
-    ->execute()
-    ->fetchObject();
-  if ($hard) {
-    return 'hard bounce (' . $hard->bounce_type . ') on ' . date('Y-m-d', $hard->created);
-  }
-
-  // ── Soft bounces (time-limited) ───────────────────────────────────────────
-  $bounce_days = (int) $config->get('bounce_suppression_days');
-  if ($bounce_days > 0) {
-    $soft = $db->select('postmark_events', 'pe')
-      ->fields('pe', ['bounce_type', 'created'])
-      ->where('LOWER(pe.recipient) = LOWER(:email)', [':email' => $email])
-      ->condition('event_type', 'Bounce')
-      ->condition('bounce_type', $soft_bounce_types, 'IN')
-      ->condition('created', $now - ($bounce_days * 86400), '>=')
-      ->orderBy('created', 'DESC')
-      ->range(0, 1)
-      ->execute()
-      ->fetchObject();
-    if ($soft) {
-      return 'soft bounce (' . $soft->bounce_type . ') on ' . date('Y-m-d', $soft->created)
-        . " (within {$bounce_days}-day suppression window)";
-    }
-  }
-
-  return NULL;
+  [$kind, $type] = explode(':', $decision->reason, 2);
+  $label = ['spam' => 'spam complaint', 'hard' => 'hard bounce', 'soft' => 'soft bounce'][$kind];
+  return $label . ' (' . $type . ') on ' . date('Y-m-d', $decision->occurred);
 }

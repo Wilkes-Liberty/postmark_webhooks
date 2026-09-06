@@ -1,0 +1,14 @@
+services:
+  postmark_webhooks.config_import_validator:
+    class: Drupal\postmark_webhooks\EventSubscriber\ConfigImportValidator
+    arguments: ['@config.typed']
+    tags:
+      - { name: event_subscriber }
+  postmark_webhooks.suppression_store:
+    class: Drupal\postmark_webhooks\Suppression\SuppressionStore
+    arguments: ['@database']
+  postmark_webhooks.suppression_policy:
+    class: Drupal\postmark_webhooks\Suppression\SuppressionPolicy
+    arguments: ['@database', '@config.factory', '@datetime.time']
+  Drupal\postmark_webhooks\Suppression\SuppressionPolicyInterface:
+    alias: postmark_webhooks.suppression_policy

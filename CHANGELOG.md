@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Issue #3621122: Reject missing, empty or padded Bounce types before claiming event identity, so corrected retries can establish suppression.
+
+- #3621121: Preserve minimal suppression evidence independently of event retention, including alpha upgrades.
+- #3621124: Use validated provider occurrence times and preserve newer evidence on delayed events.
+- #3621126: Expose one injectable, typed suppression policy for integrations and diagnostics.
+
+- #3621122: Validate webhook object shape, extracted fields and body size before storage; validate imported suppression settings.
+
 - #3621119: Preserve distinct webhook events and recipients with a versioned event identity.
 - #3621120: Enforce retry deduplication atomically, preserving legacy rows during upgrade and propagating unrelated database failures.
 

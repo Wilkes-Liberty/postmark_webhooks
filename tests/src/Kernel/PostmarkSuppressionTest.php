@@ -30,7 +30,7 @@ class PostmarkSuppressionTest extends KernelTestBase {
   protected function setUp(): void {
     parent::setUp();
     // Create the postmark_events table from the module's hook_schema().
-    $this->installSchema('postmark_webhooks', ['postmark_events']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
     // Install the default module settings (enabled, suppression windows).
     $this->installConfig(['postmark_webhooks']);
     // Load the .module file so its functions are available.
@@ -50,7 +50,9 @@ class PostmarkSuppressionTest extends KernelTestBase {
       'description' => '',
       'payload' => NULL,
     ];
-    \Drupal::database()->insert('postmark_events')->fields($row)->execute();
+    $row['eid'] = \Drupal::database()->insert('postmark_events')->fields($row)->execute();
+    $row['occurred'] = $row['created'];
+    \Drupal::service('postmark_webhooks.suppression_store')->record($row);
   }
 
   /**
@@ -268,6 +270,106 @@ class PostmarkSuppressionTest extends KernelTestBase {
     $message = ['to' => 'clean@example.com', 'send' => TRUE];
     postmark_webhooks_mail_alter($message);
     $this->assertTrue($message['send'], 'Mail to a clean address is not suppressed.');
+  }
+
+  /**
+   * Retention never changes a permanent or still-active temporary decision.
+   */
+  public function testSuppressionSurvivesEventPurge(): void {
+    $now = \Drupal::time()->getRequestTime();
+    $this->config('postmark_webhooks.settings')->set('event_retention_days', 1)->save();
+    foreach ([
+      [
+        'recipient' => 'hard@example.com',
+        'event_type' => 'Bounce',
+        'bounce_type' => 'HardBounce',
+        'created' => $now - 365 * 86400,
+      ],
+      ['recipient' => 'spam@example.com', 'event_type' => 'SpamComplaint', 'created' => $now - 365 * 86400],
+      [
+        'recipient' => 'soft@example.com',
+        'event_type' => 'Bounce',
+        'bounce_type' => 'SoftBounce',
+        'created' => $now - 5 * 86400,
+      ],
+    ] as $event) {
+      $this->insertEvent($event);
+    }
+    postmark_webhooks_cron();
+    $this->assertSame(0, (int) \Drupal::database()->select('postmark_events')->countQuery()->execute()->fetchField());
+    foreach (['hard@example.com', 'spam@example.com', 'soft@example.com'] as $recipient) {
+      $this->assertNotNull($this->reasonFor($recipient));
+    }
+  }
+
+  /**
+   * Upgrading retained alpha rows preserves permanent and temporary decisions.
+   */
+  public function testDurableStateUpgrade(): void {
+    $this->insertEvent(['recipient' => 'hard@example.com', 'event_type' => 'Bounce', 'bounce_type' => 'HardBounce']);
+    $this->insertEvent(['recipient' => 'soft@example.com', 'event_type' => 'Bounce', 'bounce_type' => 'SoftBounce']);
+    $schema = \Drupal::database()->schema();
+    $schema->dropTable('postmark_suppression');
+    foreach (['occurred', 'time_basis', 'server_id', 'message_stream'] as $field) {
+      $schema->dropField('postmark_events', $field);
+    }
+    \Drupal::moduleHandler()->loadInclude('postmark_webhooks', 'install');
+    $sandbox = [];
+    do {
+      postmark_webhooks_update_10002($sandbox);
+    } while ($sandbox['#finished'] !== 1);
+    $this->assertNotNull($this->reasonFor('hard@example.com'));
+    $this->assertNotNull($this->reasonFor('soft@example.com'));
+    $decision = \Drupal::service('postmark_webhooks.suppression_policy')->decide('hard@example.com');
+    $this->assertSame('legacy', $decision->timeBasis);
+    $this->assertNull($decision->expires);
+  }
+
+  /**
+   * Every supported reason exposes a typed decision and respects disabled mode.
+   */
+  public function testPolicyContract(): void {
+    $policy = \Drupal::service('postmark_webhooks.suppression_policy');
+    $types = [
+      'HardBounce', 'BadEmailAddress', 'ManuallyDeactivated', 'Unsubscribe',
+      'Transient', 'SoftBounce', 'DnsError', 'MailboxFull', 'MessageTooLarge',
+    ];
+    foreach ($types as $type) {
+      $recipient = strtolower($type) . '@example.com';
+      $this->insertEvent(['event_type' => 'Bounce', 'bounce_type' => $type, 'recipient' => $recipient]);
+      $decision = $policy->decide($recipient);
+      $this->assertTrue($decision->suppressed);
+      $this->assertStringEndsWith(':' . $type, $decision->reason);
+      $this->assertNotNull($decision->evidence);
+      $this->assertArrayNotHasKey('recipient', $decision->jsonSerialize());
+    }
+    $this->insertEvent(['event_type' => 'SpamNotification', 'recipient' => 'spam-notification@example.com']);
+    $this->assertSame('spam:SpamNotification', $policy->decide('spam-notification@example.com')->reason);
+    $this->config('postmark_webhooks.settings')->set('enabled', FALSE)->save();
+    $disabled = $policy->decide('hardbounce@example.com');
+    $this->assertFalse($disabled->suppressed);
+    $this->assertSame('disabled', $disabled->reason);
+  }
+
+  /**
+   * Migration reports advancing progress and preserves rows across batches.
+   */
+  public function testMigrationBatchProgress(): void {
+    $database = $this->container->get('database');
+    $insert = $database->insert('postmark_events')->fields(['created', 'event_type']);
+    for ($i = 0; $i < 251; $i++) {
+      $insert->values([1, 'Delivery']);
+    }
+    $insert->execute();
+    \Drupal::moduleHandler()->loadInclude('postmark_webhooks', 'install');
+    $sandbox = [];
+    postmark_webhooks_update_10002($sandbox);
+    $this->assertSame(250, $sandbox['last_eid']);
+    $this->assertGreaterThan(0, $sandbox['#finished']);
+    $this->assertLessThan(1, $sandbox['#finished']);
+    postmark_webhooks_update_10002($sandbox);
+    $this->assertSame(1, $sandbox['#finished']);
+    $this->assertSame(251, (int) $database->select('postmark_events')->countQuery()->execute()->fetchField());
   }
 
 }
