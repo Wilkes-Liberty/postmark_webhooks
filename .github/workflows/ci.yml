@@ -131,5 +131,8 @@ jobs:
       - name: Optional Mailer Plus integration
         if: matrix.mailer != ''
         run: python3 "$GITHUB_WORKSPACE/modules/postmark_webhooks_mailer/tests/run.py" /tmp/postmark-ci
+      - name: Optional read-only reconciliation tests
+        working-directory: /tmp/postmark-ci
+        run: vendor/bin/phpunit -c web/core "$GITHUB_WORKSPACE/modules/postmark_webhooks_reconcile/tests"
       - name: Drush discovery and JSON diagnostics
         run: python3 "$GITHUB_WORKSPACE/tests/fixtures/drush-diagnostics.py" /tmp/postmark-ci

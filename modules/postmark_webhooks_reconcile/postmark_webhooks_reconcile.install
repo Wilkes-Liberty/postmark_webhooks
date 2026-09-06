@@ -1,0 +1,30 @@
+<?php
+
+/**
+ * @file
+ * Schema for optional reconciliation metadata, without stored provider dumps.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function postmark_webhooks_reconcile_schema(): array {
+  return [
+    'postmark_reconciliation' => [
+      'description' => 'Short-lived reviewed dump digests and atomic local checkpoints.',
+      'fields' => [
+        'job_id' => ['type' => 'varchar', 'length' => 32, 'not null' => TRUE],
+        'server_id' => ['type' => 'varchar', 'length' => 20, 'not null' => TRUE],
+        'message_stream' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE],
+        'source_date' => ['type' => 'varchar', 'length' => 10, 'not null' => TRUE],
+        'digest' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+        'position' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+        'total' => ['type' => 'int', 'not null' => TRUE],
+        'created' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+        'status' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE],
+      ],
+      'primary key' => ['job_id'],
+      'indexes' => ['created' => ['created']],
+    ],
+  ];
+}
