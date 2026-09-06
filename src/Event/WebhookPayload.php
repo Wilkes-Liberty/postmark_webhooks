@@ -47,6 +47,11 @@ final class WebhookPayload {
     if (empty($data['RecordType']) || trim($data['RecordType']) !== $data['RecordType']) {
       throw new \InvalidArgumentException('Missing event type.');
     }
+    // A bounce without its classification cannot establish suppression. Reject
+    // it before its provider ID can consume a corrected retry's identity.
+    if ($data['RecordType'] === 'Bounce' && (!isset($data['Type']) || $data['Type'] === '' || trim($data['Type']) !== $data['Type'])) {
+      throw new \InvalidArgumentException('Missing or padded bounce type.');
+    }
     $recipient = mb_strtolower(trim($data['Recipient'] ?? $data['Email'] ?? ''));
     if (!(new EmailValidator())->isValid($recipient)) {
       throw new \InvalidArgumentException('Invalid recipient.');
