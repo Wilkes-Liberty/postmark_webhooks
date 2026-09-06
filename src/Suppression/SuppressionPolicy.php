@@ -11,6 +11,8 @@ use Drupal\Core\Database\Connection;
 
 /**
  * Evaluates durable evidence using the configured suppression windows.
+ *
+ * @internal
  */
 final class SuppressionPolicy implements SuppressionPolicyInterface {
 

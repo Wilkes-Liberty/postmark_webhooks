@@ -1,0 +1,4 @@
+services:
+  postmark_webhooks_consumer_test.send_gate:
+    class: Drupal\postmark_webhooks_consumer_test\SendGate
+    arguments: ['@Drupal\postmark_webhooks\Suppression\SuppressionPolicyInterface']

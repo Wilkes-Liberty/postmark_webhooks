@@ -7,6 +7,8 @@ use Drupal\Core\Database\IntegrityConstraintViolationException;
 
 /**
  * Keeps bounded per-reason evidence independently of event-log retention.
+ *
+ * @internal
  */
 final class SuppressionStore {
 

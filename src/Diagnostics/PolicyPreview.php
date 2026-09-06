@@ -14,6 +14,8 @@ use Drupal\postmark_webhooks\Suppression\SuppressionPolicyInterface;
 
 /**
  * Read-only effective policy and coverage diagnostics, without sending mail.
+ *
+ * @internal
  */
 final class PolicyPreview {
 
