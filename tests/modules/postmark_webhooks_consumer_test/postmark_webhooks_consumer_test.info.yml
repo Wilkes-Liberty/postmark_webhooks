@@ -1,0 +1,8 @@
+name: Postmark Webhooks consumer test
+description: Example 1.x consumer that depends only on the public suppression interface.
+package: Testing
+type: module
+hidden: true
+core_version_requirement: ^10.3 || ^11
+dependencies:
+  - postmark_webhooks:postmark_webhooks

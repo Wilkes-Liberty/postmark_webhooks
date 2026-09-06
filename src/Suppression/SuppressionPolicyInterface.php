@@ -5,7 +5,7 @@ namespace Drupal\postmark_webhooks\Suppression;
 use Drupal\postmark_webhooks\Source\SourceContext;
 
 /**
- * Stable boundary for checking one normalized recipient before transport.
+ * Stable 1.x boundary for checking one normalized recipient before transport.
  */
 interface SuppressionPolicyInterface {
 

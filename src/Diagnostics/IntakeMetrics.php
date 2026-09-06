@@ -9,6 +9,8 @@ use Drupal\Core\Database\DatabaseException;
 
 /**
  * Fixed-cardinality intake totals; never stores a recipient or credential.
+ *
+ * @internal
  */
 final class IntakeMetrics {
 

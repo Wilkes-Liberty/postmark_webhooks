@@ -209,7 +209,9 @@ from the local database.
 
 ## Suppression service and occurrence time
 
-Inject `postmark_webhooks.suppression_policy` (or the interface alias
+The 1.x compatibility contract for `decide()`, decision JSON, Drush output and
+configuration is in [docs/public-api.md](docs/public-api.md). Inject
+`postmark_webhooks.suppression_policy` (or the interface alias
 `Drupal\postmark_webhooks\Suppression\SuppressionPolicyInterface`) and call
 `decide($recipient)` before transport. The immutable result exposes `suppressed`,
 `reason`, `expires`, `evidence`, `occurred`, and `timeBasis`; it is JSON serializable
@@ -476,8 +478,9 @@ plus an isolated Drupal 10.3 compatibility-floor job. MySQL 8.4, MariaDB 10.11
 and SQLite run the same suite on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5.
 See [docs/integration-verification.md](docs/integration-verification.md),
 [docs/database-verification.md](docs/database-verification.md),
-[docs/published-package-verification.md](docs/published-package-verification.md)
-and [docs/installation-upgrade.md](docs/installation-upgrade.md).
+[docs/published-package-verification.md](docs/published-package-verification.md),
+[docs/installation-upgrade.md](docs/installation-upgrade.md) and
+[docs/public-api.md](docs/public-api.md).
 
 HTTP coverage includes settings permissions, secret exclusion, Basic Auth and
 retry handling through the real route. Routing-context tests cover root,

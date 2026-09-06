@@ -8,6 +8,8 @@ use Drupal\Core\Site\Settings;
 
 /**
  * Explicit source mapping and settings-bound intake restrictions.
+ *
+ * @internal
  */
 final class SourcePolicy {
 

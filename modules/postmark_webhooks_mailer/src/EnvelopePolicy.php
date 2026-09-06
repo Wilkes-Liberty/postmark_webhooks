@@ -12,6 +12,8 @@ use Drupal\symfony_mailer\Exception\SkipMailException;
 
 /**
  * Checks the final Mailer Plus envelope before it reaches transport.
+ *
+ * @internal
  */
 final class EnvelopePolicy {
 
