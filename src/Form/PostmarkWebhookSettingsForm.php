@@ -4,6 +4,7 @@ namespace Drupal\postmark_webhooks\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Url;
 
 /**
  * Configures Postmark webhook suppression settings.
@@ -30,7 +31,7 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $config = $this->config('postmark_webhooks.settings');
 
-    $webhook_url = $this->getRequest()->getSchemeAndHttpHost() . '/api/webhooks/postmark';
+    $webhook_url = Url::fromRoute('postmark_webhooks.receive', [], ['absolute' => TRUE])->toString();
     $form['webhook_url'] = [
       '#type' => 'item',
       '#title' => $this->t('Webhook URL'),

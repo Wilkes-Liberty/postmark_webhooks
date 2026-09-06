@@ -36,7 +36,9 @@ https://postmark:URL_ENCODED_SECRET@example.com/api/webhooks/postmark
 Postmark sends these credentials as HTTP Basic Auth. The password must match
 the settings value; `postmark` is the conventional username. Use HTTPS, preserve
 the `Authorization` header through your proxy, and keep credentials out of
-logs. The admin form shows only the host and endpoint path.
+logs. Copy the endpoint path from the admin form: it is generated through
+Drupal routing and includes the installation base path and trusted proxy context.
+The displayed URL contains no credentials.
 
 Restrict access at your firewall or reverse proxy to the current
 [Postmark webhook IP addresses](https://postmarkapp.com/support/article/800-ips-for-firewalls#webhooks).
@@ -120,9 +122,16 @@ From a Drupal checkout with this module installed and development dependencies:
 
 ```sh
 vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install web/modules/contrib/postmark_webhooks
-SIMPLETEST_DB=pgsql://user:password@localhost/database vendor/bin/phpunit -c web/core web/modules/contrib/postmark_webhooks/tests
+SIMPLETEST_BASE_URL=http://127.0.0.1:8888 SIMPLETEST_DB=pgsql://user:password@localhost/database vendor/bin/phpunit -c web/core web/modules/contrib/postmark_webhooks/tests
 ```
 
+For HTTP tests, start a disposable site server from the Drupal web root with
+`PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8888 -t . .ht.router.php`. CI runs
+this server and the full suite on both core versions.
+
+HTTP coverage includes settings permissions, secret exclusion, Basic Auth and
+retry handling through the real route. Routing-context tests cover root,
+subdirectory and trusted proxy URL generation.
 Kernel coverage includes authentication, missing secret, malformed JSON,
 event identity, concurrent retries, legacy upgrades, unrelated database failures,
 NULL payload, retention and case-insensitive suppression.

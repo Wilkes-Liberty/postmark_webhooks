@@ -84,6 +84,13 @@ jobs:
           ln -s "$GITHUB_WORKSPACE" /tmp/postmark-ci/web/modules/contrib/postmark_webhooks
       - name: Coding standards
         run: /tmp/postmark-ci/vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install "$GITHUB_WORKSPACE"
-      - name: Kernel tests
+      - name: Start disposable HTTP server
+        working-directory: /tmp/postmark-ci/web
+        run: |
+          mkdir -p sites/simpletest/browser_output
+          PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8888 -t . .ht.router.php > /tmp/postmark-http.log 2>&1 &
+      - name: Kernel and HTTP integration tests
+        env:
+          SIMPLETEST_BASE_URL: http://127.0.0.1:8888
         working-directory: /tmp/postmark-ci
         run: vendor/bin/phpunit -c web/core web/modules/contrib/postmark_webhooks/tests
