@@ -47,7 +47,7 @@ final class SuppressionPolicy implements SuppressionPolicyInterface {
     foreach ($rows as $row) {
       if ($row->reason === 'release:hard' && $row->server_id !== '' && $row->message_stream !== '') {
         $key = json_encode([$row->server_id, $row->message_stream], JSON_THROW_ON_ERROR);
-        $releases[$key] = (int) $row->occurred;
+        $releases[$key] = max($releases[$key] ?? -1, (int) $row->occurred);
       }
     }
     $result = new SuppressionDecision(FALSE, 'no_active_suppression');
