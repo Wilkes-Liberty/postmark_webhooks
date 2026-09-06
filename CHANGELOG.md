@@ -16,11 +16,10 @@
 - #3621133: Accept a settings-only previous webhook secret until a fixed expiry; reject malformed active credentials safely.
 - #3621125: Generate endpoint URLs through routing and verify HTTP authentication and settings access.
 - #3621123: Check every To/Cc/Bcc recipient before core mail transport and reject malformed lists safely.
-- Issue #3621122: Reject missing, empty or padded Bounce types before claiming event identity, so corrected retries can establish suppression.
 - #3621121: Preserve minimal suppression evidence independently of event retention, including alpha upgrades.
 - #3621124: Use validated provider occurrence times and preserve newer evidence on delayed events.
 - #3621126: Expose one injectable, typed suppression policy for integrations and diagnostics.
-- #3621122: Validate webhook object shape, extracted fields and body size before storage; validate imported suppression settings.
+- #3621122: Validate webhook object shape, fields, body size and imported settings. Reject missing, empty or padded Bounce types before claiming event identity so corrected retries can establish suppression.
 - #3621119: Preserve distinct webhook events and recipients with a versioned event identity.
 - #3621120: Enforce retry deduplication atomically, preserving legacy rows during upgrade and propagating unrelated database failures.
 
