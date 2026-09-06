@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621225: Run kernel, HTTP, upgrade, reconciliation and Drush checks on Drupal 10.6, 11.3 and 11.4 with PHP 8.3 and a current compatible PHP version. Keep Mailer Plus 1.6.2 and 2.0.2 on the supported matrix, isolate the advertised Drupal 10.3 floor from Composer audit blocking, and record resolved package versions in CI.
+
 ## [1.0.0-alpha2] - 2026-09-06
 
 - #3621137: Verify real subdirectory HTTP deployment and complete responsive operator-form integration coverage.

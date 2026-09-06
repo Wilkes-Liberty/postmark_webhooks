@@ -283,9 +283,12 @@ SIMPLETEST_BASE_URL=http://127.0.0.1:8888 SIMPLETEST_DB=pgsql://user:password@lo
 
 For HTTP tests, start a disposable site server from the Drupal web root with
 `PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8888 -t . .ht.router.php`. CI runs
-this server and the full suite on both core versions with PostgreSQL 16. The
-current database verification target is PostgreSQL; MySQL and SQLite query plans
-and concurrency behavior have not been verified by this project.
+this server and the full suite on Drupal 10.6, 11.3 and 11.4 with PostgreSQL 16,
+plus an isolated Drupal 10.3 compatibility-floor job. See
+[docs/integration-verification.md](docs/integration-verification.md) for the
+matrix and recorded versions. The current database verification target is
+PostgreSQL; MySQL and SQLite query plans and concurrency behavior have not been
+verified by this project.
 
 HTTP coverage includes settings permissions, secret exclusion, Basic Auth and
 retry handling through the real route. Routing-context tests cover root,
@@ -456,8 +459,9 @@ prevents further sending; the adapter emits no duplicate suppression log. Allowe
 messages are checked again after rendering because processors can add recipients.
 Within that final check, duplicate To/Cc/Bcc addresses are evaluated once.
 
-CI tests Mailer Plus 1.6.2 and 2.0.2 on both Drupal 10/PHP8.3 and Drupal 11/PHP8.4,
-plus the core receiver without either optional dependency. Integration tests use
+CI tests Mailer Plus 1.6.2 and 2.0.2 on Drupal 10.6 and 11.4, Mailer Plus 2.0.2
+on Drupal 11.3, and the core receiver without either optional dependency on each
+supported branch. Integration tests use
 real native and compatibility processing with a capture-only transport. They
 assert blocked messages never execute transport and allowed headers are retained.
 The optional test runner permits only the exact known upstream deprecation
