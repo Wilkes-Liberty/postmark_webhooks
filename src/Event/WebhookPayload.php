@@ -20,6 +20,10 @@ final class WebhookPayload {
       throw new \InvalidArgumentException('Expected a JSON object.');
     }
     $data = (array) $object;
+    // Postmark explicitly sends a null MessageID for subscription changes.
+    if (($data['RecordType'] ?? NULL) === 'SubscriptionChange' && array_key_exists('MessageID', $data) && $data['MessageID'] === NULL) {
+      unset($data['MessageID']);
+    }
     $limits = [
       'RecordType' => 64,
       'Recipient' => 255,
@@ -51,6 +55,21 @@ final class WebhookPayload {
     // it before its provider ID can consume a corrected retry's identity.
     if ($data['RecordType'] === 'Bounce' && (!isset($data['Type']) || $data['Type'] === '' || trim($data['Type']) !== $data['Type'])) {
       throw new \InvalidArgumentException('Missing or padded bounce type.');
+    }
+    if ($data['RecordType'] === 'SubscriptionChange') {
+      if (!is_bool($data['SuppressSending'] ?? NULL)
+        || !isset($data['ServerID']) || empty($data['MessageStream']) || empty($data['ChangedAt'])
+        || !in_array($data['Origin'] ?? NULL, ['Recipient', 'Customer', 'Admin'], TRUE)) {
+        throw new \InvalidArgumentException('Incomplete subscription change.');
+      }
+      if ($data['SuppressSending']) {
+        if (!in_array($data['SuppressionReason'] ?? NULL, ['HardBounce', 'SpamComplaint', 'ManualSuppression'], TRUE)) {
+          throw new \InvalidArgumentException('Unsupported subscription reason.');
+        }
+      }
+      elseif (($data['SuppressionReason'] ?? NULL) !== NULL) {
+        throw new \InvalidArgumentException('Reactivation must not specify a suppression reason.');
+      }
     }
     $recipient = mb_strtolower(trim($data['Recipient'] ?? $data['Email'] ?? ''));
     if (!(new EmailValidator())->isValid($recipient)) {

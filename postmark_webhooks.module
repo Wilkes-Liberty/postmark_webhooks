@@ -105,6 +105,12 @@ function _postmark_webhooks_suppression_reason(string $email, $config, ?SourceCo
     return 'source policy configuration requires attention';
   }
   [$kind, $type] = explode(':', $decision->reason, 2);
-  $label = ['spam' => 'spam complaint', 'hard' => 'hard bounce', 'soft' => 'soft bounce'][$kind];
+  $labels = [
+    'spam' => 'spam complaint',
+    'hard' => 'hard bounce',
+    'soft' => 'soft bounce',
+    'consent' => 'recipient suppression',
+  ];
+  $label = $labels[$kind];
   return $label . ' (' . $type . ') on ' . date('Y-m-d', $decision->occurred);
 }

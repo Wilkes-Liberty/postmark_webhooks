@@ -19,6 +19,20 @@ final class SuppressionStore {
    * Returns a policy reason for a stored event, or NULL for log-only events.
    */
   public static function reason(array $event): ?string {
+    if ($event['event_type'] === 'SubscriptionChange') {
+      if (!isset($event['suppress_sending'])) {
+        return NULL;
+      }
+      if (!(bool) $event['suppress_sending']) {
+        return 'release:hard';
+      }
+      return match ($event['suppression_reason'] ?? '') {
+        'HardBounce' => 'hard:HardBounce',
+        'SpamComplaint' => 'spam:SpamComplaint',
+        'ManualSuppression' => 'consent:ManualSuppression',
+        default => NULL,
+      };
+    }
     if (in_array($event['event_type'], ['SpamComplaint', 'SpamNotification'], TRUE)) {
       return 'spam:' . $event['event_type'];
     }

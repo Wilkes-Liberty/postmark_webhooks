@@ -15,6 +15,9 @@ function postmark_webhooks_schema() {
   $schema['postmark_events'] = [
     'description' => 'Log of Postmark bounce, spam, and delivery webhook events.',
     'fields' => [
+      'suppress_sending' => ['type' => 'int', 'size' => 'tiny', 'not null' => FALSE],
+      'suppression_reason' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE, 'default' => ''],
+      'origin' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE, 'default' => ''],
       'occurred' => [
         'type' => 'int',
         'size' => 'big',
@@ -233,4 +236,21 @@ function postmark_webhooks_update_10002(array &$sandbox): void {
   }
   $sandbox['#finished'] = count($events) < 250 || $sandbox['last_eid'] >= $sandbox['max_eid']
     ? 1 : $sandbox['last_eid'] / $sandbox['max_eid'];
+}
+
+/**
+ * Adds minimal SubscriptionChange fields without guessing legacy transitions.
+ */
+function postmark_webhooks_update_10003(): void {
+  $schema = \Drupal::database()->schema();
+  $fields = [
+    'suppress_sending' => ['type' => 'int', 'size' => 'tiny', 'not null' => FALSE],
+    'suppression_reason' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE, 'default' => ''],
+    'origin' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE, 'default' => ''],
+  ];
+  foreach ($fields as $name => $definition) {
+    if (!$schema->fieldExists('postmark_events', $name)) {
+      $schema->addField('postmark_events', $name, $definition);
+    }
+  }
 }

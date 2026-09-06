@@ -29,6 +29,10 @@ final class EventIdentity {
         (string) ($data['BouncedAt'] ?? $data['DeliveredAt'] ?? $data['ReceivedAt'] ?? $data['ChangedAt'] ?? ''),
       ];
     }
+    if (($data['RecordType'] ?? '') === 'SubscriptionChange') {
+      $scope[0] = 'v2';
+      $identity[] = [$data['SuppressSending'], $data['SuppressionReason'] ?? NULL, $data['Origin']];
+    }
     return hash('sha256', json_encode([$scope, $identity], JSON_THROW_ON_ERROR));
   }
 

@@ -273,3 +273,35 @@ preserves the existing shared-endpoint behavior. Credential validation still
 happens first. Keep this allowlist in trusted deployment settings, not webhook
 metadata. Separate credentials per source are not implemented; all accepted
 credentials share this allowlist.
+
+## Subscription changes and recovery
+
+Enable the Subscription Change webhook in Postmark when using these transitions.
+The provider contract is documented at
+https://postmarkapp.com/developer/webhooks/subscription-change-webhook.
+The receiver requires a source, ChangedAt, supported Origin, boolean
+SuppressSending, and a supported reason for suppressions. A null MessageID is
+accepted for these events. Reactivations have no suppression reason. Invalid or
+ambiguous transitions return 400 before claiming retry identity.
+
+HardBounce adds durable hard-bounce evidence. SpamComplaint adds complaint
+evidence under the configured complaint window. ManualSuppression adds permanent
+consent protection, including recipient opt-out and administrator suppression.
+Because the payload does not identify the reason being removed, reactivation
+only releases older HardBounce/BadEmailAddress evidence from the same known
+server and stream. It never clears complaint, unsubscribe or manual suppression.
+Equal occurrence seconds conservatively retain the block; a release must be
+strictly newer. A later hard bounce blocks again. Source mappings still determine
+where the remaining evidence applies.
+
+The minimal release marker survives history retention so a delayed older event
+cannot undo recovery. Release markers never clear legacy evidence whose source
+is unknown. Retained event history stores only the transition boolean, reason and
+origin in addition to existing extracted fields, never raw JSON. Subscription
+identity version 2 includes transition state so equal-time changes remain distinct.
+Other event identities are unchanged.
+
+Run database updates. Existing SubscriptionChange rows gain nullable transition
+fields; prior versions discarded the details needed to reconstruct their state.
+They remain history-only. A valid replay uses the corrected identity contract;
+reconciliation is required for unavailable provider history.
