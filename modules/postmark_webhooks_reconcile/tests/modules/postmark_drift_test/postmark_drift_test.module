@@ -1,0 +1,19 @@
+<?php
+
+/**
+ * @file
+ * Captures drift reports and can simulate notification delivery failure.
+ */
+
+/**
+ * Implements hook_postmark_webhooks_drift_report().
+ */
+function postmark_drift_test_postmark_webhooks_drift_report(array $report): void {
+  $state = \Drupal::state();
+  if ($state->get('postmark_drift_test.throw')) {
+    throw new \RuntimeException('Synthetic drift notification failure.');
+  }
+  $seen = $state->get('postmark_drift_test.reports', []);
+  $seen[] = $report;
+  $state->set('postmark_drift_test.reports', $seen);
+}
