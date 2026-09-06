@@ -158,7 +158,56 @@ function postmark_webhooks_update_10001(): void {
 function postmark_webhooks_update_10002(array &$sandbox): void {
   $database = \Drupal::database();
   $schema = $database->schema();
-  $definition = postmark_webhooks_schema();
+  // Keep this migration independent of future hook_schema() changes.
+  $definition = [
+    'postmark_events' => [
+      'fields' => [
+        'occurred' => [
+          'type' => 'int',
+          'size' => 'big',
+          'not null' => TRUE,
+          'default' => 0,
+          'description' => 'Provider occurrence time; legacy rows use receipt time.',
+        ],
+        'time_basis' => [
+          'type' => 'varchar',
+          'length' => 8,
+          'not null' => TRUE,
+          'default' => 'legacy',
+          'description' => 'provider, receipt, or legacy.',
+        ],
+        'server_id' => [
+          'type' => 'varchar',
+          'length' => 20,
+          'not null' => TRUE,
+          'default' => '',
+          'description' => 'Provider server identifier when supplied.',
+        ],
+        'message_stream' => [
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+          'default' => '',
+          'description' => 'Provider message stream when supplied.',
+        ],
+      ],
+    ],
+    'postmark_suppression' => [
+      'description' => 'Minimal suppression evidence, independent of event retention.',
+      'fields' => [
+        'state_key' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+        'recipient' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE],
+        'server_id' => ['type' => 'varchar', 'length' => 20, 'not null' => TRUE, 'default' => ''],
+        'message_stream' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+        'reason' => ['type' => 'varchar', 'length' => 80, 'not null' => TRUE],
+        'occurred' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+        'time_basis' => ['type' => 'varchar', 'length' => 8, 'not null' => TRUE],
+        'evidence' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+      ],
+      'primary key' => ['state_key'],
+      'indexes' => ['recipient' => ['recipient']],
+    ],
+  ];
   if (!isset($sandbox['last_eid'])) {
     foreach (['occurred', 'time_basis', 'server_id', 'message_stream'] as $field) {
       if (!$schema->fieldExists('postmark_events', $field)) {
