@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621135: Add audited recipient export and bounded history erasure while retaining suppression, and remove stored provider free text.
+
 - #3621130: Add a protected recipient inspector and CSRF-confirmed, audited source-specific hard-bounce recovery.
 
 - #3621131: Add read-only policy previews, structured Drush diagnostics and privacy-safe atomic intake counters.

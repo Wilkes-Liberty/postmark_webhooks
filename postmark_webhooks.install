@@ -119,7 +119,7 @@ function postmark_webhooks_schema() {
         'length' => 512,
         'not null' => TRUE,
         'default' => '',
-        'description' => 'Human-readable description from Postmark.',
+        'description' => 'Legacy provider free text; new events store an empty string.',
       ],
       'payload' => [
         'type' => 'text',
@@ -315,4 +315,27 @@ function postmark_webhooks_update_10005(): void {
       'indexes' => ['subject' => ['subject']],
     ]);
   }
+}
+
+/**
+ * Removes legacy provider free text and raw bodies in bounded batches.
+ */
+function postmark_webhooks_update_10006(array &$sandbox): void {
+  $database = \Drupal::database();
+  if (!isset($sandbox['last_eid'])) {
+    $maximum = $database->select('postmark_events');
+    $maximum->addExpression('MAX(eid)');
+    $sandbox['maximum'] = (int) $maximum->execute()->fetchField();
+    $sandbox['last_eid'] = 0;
+  }
+  $ids = $database->select('postmark_events', 'e')->fields('e', ['eid'])
+    ->condition('eid', $sandbox['last_eid'], '>')->condition('eid', $sandbox['maximum'], '<=')
+    ->orderBy('eid')->range(0, 250)->execute()->fetchCol();
+  if ($ids) {
+    $database->update('postmark_events')->fields(['description' => '', 'payload' => NULL])
+      ->condition('eid', $ids, 'IN')->execute();
+    $sandbox['last_eid'] = (int) end($ids);
+  }
+  $sandbox['#finished'] = count($ids) < 250 || $sandbox['last_eid'] >= $sandbox['maximum']
+    ? 1 : $sandbox['last_eid'] / $sandbox['maximum'];
 }

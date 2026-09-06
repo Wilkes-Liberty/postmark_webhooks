@@ -55,3 +55,25 @@ postmark_webhooks.recover:
   options:
     _admin_route: TRUE
     no_cache: TRUE
+
+postmark_webhooks.recipient_export:
+  path: '/admin/reports/postmark-suppression/export'
+  defaults:
+    _form: '\Drupal\postmark_webhooks\Form\RecipientExportForm'
+    _title: 'Export Postmark recipient data'
+  requirements:
+    _permission: 'export postmark recipient data'
+  options:
+    _admin_route: TRUE
+    no_cache: TRUE
+
+postmark_webhooks.recipient_erase:
+  path: '/admin/reports/postmark-suppression/erase'
+  defaults:
+    _form: '\Drupal\postmark_webhooks\Form\RecipientErasureForm'
+    _title: 'Erase Postmark recipient history'
+  requirements:
+    _permission: 'erase postmark recipient history'
+  options:
+    _admin_route: TRUE
+    no_cache: TRUE
