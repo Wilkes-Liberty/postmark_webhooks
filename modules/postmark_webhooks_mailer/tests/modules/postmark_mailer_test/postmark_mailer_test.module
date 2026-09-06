@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * @file
+ * Test-only Mailer Plus initialization and capture transport selection.
+ */
+
+use Drupal\symfony_mailer\EmailInterface;
+
+/**
+ * Implements hook_mailer_init().
+ */
+function postmark_mailer_test_mailer_init(EmailInterface $email): void {
+  $addresses = \Drupal::state()->get('postmark_mailer_test.addresses');
+  if ($addresses) {
+    $email->setTo($addresses[0]);
+  }
+  $email->addCallback(static function (EmailInterface $email) use ($addresses): void {
+    if ($addresses) {
+      [, $cc, $bcc] = $addresses;
+      if ($cc !== NULL) {
+        $email->setCc($cc);
+      }
+      if ($bcc !== NULL) {
+        $email->setBcc($bcc);
+      }
+    }
+    if (method_exists($email, 'setTransportDsn')) {
+      $email->setTransportDsn('postmark-test://default');
+    }
+    else {
+      $email->setTransport('postmark-test://default');
+    }
+  }, EmailInterface::PHASE_BUILD, PHP_INT_MAX);
+}

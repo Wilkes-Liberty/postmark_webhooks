@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621128: Add an optional Mailer Plus adapter that checks final recipients before native and compatibility transport.
+
 - #3621129: Apply ordered subscription suppression and source-specific hard-bounce recovery without clearing consent protections.
 
 - #3621132: Add explicit source-scoped policy and settings-bound intake source restrictions while preserving the site-wide default.

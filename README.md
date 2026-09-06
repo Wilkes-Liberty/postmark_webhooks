@@ -135,10 +135,9 @@ soft-bounce windows 0–365 days, complaint windows and retention 0–3650 days.
 
 ## Known limitations
 
-- Native Symfony Mailer transports can bypass `hook_mail_alter()`. Mail sent
-  through those paths is **not suppressed** by this module. Verify your mail
-  backend uses Drupal's mail manager; no Symfony Mailer event subscriber ships
-  in this release.
+- Native Mailer Plus sending requires the optional `postmark_webhooks_mailer`
+  adapter described below. Direct Symfony transports outside Drupal Mailer Plus
+  remain outside this integration; callers must use the shared policy themselves.
 - This is an event receiver, not an inbound email parser or mail sender. It
   does not synchronize a Postmark server's suppression list.
 
@@ -305,3 +304,33 @@ Run database updates. Existing SubscriptionChange rows gain nullable transition
 fields; prior versions discarded the details needed to reconstruct their state.
 They remain history-only. A valid replay uses the corrected identity contract;
 reconciliation is required for unavailable provider history.
+
+## Optional Mailer Plus adapter
+
+The receiver does not require a sender dependency. When using `drupal/symfony_mailer`
+(Mailer Plus), install that package separately and enable `postmark_webhooks_mailer`.
+The adapter uses the supported initialization/post-render callback API shared by
+Mailer Plus 1.6 and 2.x. It checks the To/Cc/Bcc addresses that become the final
+transport envelope, including headers added while rendering, and cancels the whole
+message when any recipient is suppressed. Allowed messages keep their headers.
+Disabled suppression remains disabled in this path too.
+
+A native caller can set the trusted `postmark_webhooks_source` email parameter to
+a `SourceContext`; missing context conservatively applies all source evidence.
+Do not use untrusted message headers to assert a source. The final callback runs
+after normal mail processors. Custom code that changes recipients after this
+callback must enforce the shared policy itself.
+
+The compatibility path may also invoke the core hook. An earlier cancellation
+prevents further sending; the adapter emits no duplicate suppression log. Allowed
+messages are checked again after rendering because processors can add recipients.
+Within that final check, duplicate To/Cc/Bcc addresses are evaluated once.
+
+CI tests Mailer Plus 1.6.2 and 2.0.2 on both Drupal 10/PHP8.3 and Drupal 11/PHP8.4,
+plus the core receiver without either optional dependency. Integration tests use
+real native and compatibility processing with a capture-only transport. They
+assert blocked messages never execute transport and allowed headers are retained.
+The optional test runner permits only the exact known upstream deprecation
+messages listed in `modules/postmark_webhooks_mailer/tests/upstream-deprecations.json`.
+New messages and functional failures fail the run; upstream notices remain visible
+on PHPUnit 11. This does not disable deprecation checking for the receiver suite.

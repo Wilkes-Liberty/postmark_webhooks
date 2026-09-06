@@ -17,8 +17,22 @@ jobs:
         include:
           - drupal: '10.3.*'
             php: '8.3'
+            mailer: ''
           - drupal: '^11'
             php: '8.4'
+            mailer: ''
+          - drupal: '10.3.*'
+            php: '8.3'
+            mailer: '1.6.2'
+          - drupal: '^11'
+            php: '8.4'
+            mailer: '1.6.2'
+          - drupal: '10.3.*'
+            php: '8.3'
+            mailer: '2.0.2'
+          - drupal: '^11'
+            php: '8.4'
+            mailer: '2.0.2'
     services:
       postgres:
         image: postgres:16
@@ -45,6 +59,7 @@ jobs:
       - name: Create isolated compatibility fixture
         env:
           DRUPAL_CONSTRAINT: ${{ matrix.drupal }}
+          MAILER_CONSTRAINT: ${{ matrix.mailer }}
         run: |
           mkdir -p /tmp/postmark-ci
           python3 - <<'PY'
@@ -72,10 +87,15 @@ jobs:
               'audit': {'block-insecure': False},
             },
             'extra': {
-              'installer-paths': {'web/core': ['type:drupal-core']},
+              'installer-paths': {
+                'web/core': ['type:drupal-core'],
+                'web/modules/contrib/{$name}': ['type:drupal-module'],
+              },
               'drupal-scaffold': {'locations': {'web-root': 'web/'}},
             },
           }
+          if os.environ.get('MAILER_CONSTRAINT'):
+            manifest['require']['drupal/symfony_mailer'] = os.environ['MAILER_CONSTRAINT']
           with open('/tmp/postmark-ci/composer.json', 'w') as f:
             json.dump(manifest, f)
           PY
@@ -107,3 +127,6 @@ jobs:
           SIMPLETEST_BASE_URL: http://127.0.0.1:8888
         working-directory: /tmp/postmark-ci
         run: vendor/bin/phpunit -c web/core web/modules/contrib/postmark_webhooks/tests
+      - name: Optional Mailer Plus integration
+        if: matrix.mailer != ''
+        run: python3 "$GITHUB_WORKSPACE/modules/postmark_webhooks_mailer/tests/run.py" /tmp/postmark-ci
