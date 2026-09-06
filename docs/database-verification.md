@@ -23,7 +23,7 @@ privacy erasure and bounded retention), reconciliation, Drush discovery and the
 ## Query plans
 
 `PostmarkQueryPlanTest` seeds 5,000 history rows (400 expired, the rest
-current) and 200 suppression rows, refreshes planner statistics, and requires
+current) and 2,000 suppression rows, refreshes planner statistics, and requires
 the cleanup selection (`created < cutoff ORDER BY created LIMIT 250`) and
 recipient lookup to use an index rather than a full scan. That is CI evidence,
 not a 100,000-row throughput measurement. The earlier PostgreSQL 100,000-row

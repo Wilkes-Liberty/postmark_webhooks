@@ -43,18 +43,29 @@ class PostmarkQueryPlanTest extends KernelTestBase {
       $insert->values([$i < 400 ? $i : 1000 + $i, 'history' . ($i % 50) . '@example.com']);
     }
     $insert->execute();
-    $store = $this->container->get('postmark_webhooks.suppression_store');
-    for ($i = 0; $i < 200; $i++) {
-      $store->record([
-        'event_type' => 'Bounce',
-        'bounce_type' => 'HardBounce',
-        'recipient' => 'lookup' . $i . '@example.com',
-        'created' => 1,
-        'occurred' => 1,
-        'time_basis' => 'provider',
-        'event_key' => hash('sha256', (string) $i),
+    $states = $database->insert('postmark_suppression')->fields([
+      'state_key',
+      'recipient',
+      'server_id',
+      'message_stream',
+      'reason',
+      'occurred',
+      'time_basis',
+      'evidence',
+    ]);
+    for ($i = 0; $i < 2000; $i++) {
+      $states->values([
+        hash('sha256', (string) $i),
+        'lookup' . $i . '@example.com',
+        '',
+        '',
+        'hard:HardBounce',
+        1,
+        'provider',
+        hash('sha256', 'evidence' . $i),
       ]);
     }
+    $states->execute();
     $this->analyze('postmark_events');
     $this->analyze('postmark_suppression');
 
@@ -123,7 +134,8 @@ class PostmarkQueryPlanTest extends KernelTestBase {
         $fields = array_change_key_case((array) $row, CASE_LOWER);
         $keys[] = strtolower((string) ($fields['key'] ?? ''));
       }
-      $this->assertTrue($keys !== [] && implode('', $keys) !== '', $label . " MySQL/MariaDB plan used no index:\n" . $text);
+      $matched = array_filter($keys, static fn (string $key): bool => $key !== '' && str_contains($key, $column));
+      $this->assertNotSame([], $matched, $label . " MySQL/MariaDB plan did not use the $column index:\n" . $text);
       return;
     }
     $uses_index = str_contains($text, 'index') || str_contains($text, $column);
