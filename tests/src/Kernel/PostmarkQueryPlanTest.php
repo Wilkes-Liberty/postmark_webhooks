@@ -17,9 +17,9 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 class PostmarkQueryPlanTest extends KernelTestBase {
 
   /**
-   * Number of expired history rows used for planner evidence.
+   * History rows used for planner evidence, mixed expired and current.
    */
-  private const HISTORY_ROWS = 3000;
+  private const HISTORY_ROWS = 5000;
 
   /**
    * {@inheritdoc}
@@ -38,7 +38,9 @@ class PostmarkQueryPlanTest extends KernelTestBase {
     $database = $this->container->get('database');
     $insert = $database->insert('postmark_events')->fields(['created', 'recipient']);
     for ($i = 0; $i < self::HISTORY_ROWS; $i++) {
-      $insert->values([1, 'history' . ($i % 50) . '@example.com']);
+      // Expired rows are a minority so created < cutoff can use the index
+      // instead of scanning the whole table.
+      $insert->values([$i < 400 ? $i : 1000 + $i, 'history' . ($i % 50) . '@example.com']);
     }
     $insert->execute();
     $store = $this->container->get('postmark_webhooks.suppression_store');

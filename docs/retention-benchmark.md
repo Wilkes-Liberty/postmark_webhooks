@@ -47,5 +47,5 @@ Automated coverage includes batch boundaries, late older arrivals, current rows,
 retained suppression, and two independent cleanup processes racing with a webhook
 receiver. Both Drupal/PHP fixtures pass. Queries use Drupal's portable database
 API. Indexed cleanup and lookup are asserted on MySQL, MariaDB and SQLite in
-CI at a 3,000-row scale; see [database-verification.md](database-verification.md).
+CI at a mixed-age 5,000-row scale; see [database-verification.md](database-verification.md).
 This 100,000-row ANALYZE sample remains PostgreSQL-only.
