@@ -1,0 +1,18 @@
+<?php
+
+/**
+ * @file
+ * Test-only mail builder for the real Drupal mail manager.
+ */
+
+/**
+ * Implements hook_mail().
+ */
+function postmark_webhooks_test_mail($key, &$message, $params): void {
+  $message['subject'] = 'Suppression transport regression';
+  $message['body'][] = 'Synthetic local test message.';
+  $message['headers'] = ($params['headers'] ?? []) + $message['headers'];
+  if (!empty($params['block'])) {
+    $message['send'] = FALSE;
+  }
+}

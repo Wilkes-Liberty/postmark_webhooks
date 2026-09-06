@@ -67,7 +67,13 @@ Changing window settings re-evaluates this evidence; disabling suppression does
 not delete it. Delivery and other log-only events never clear a block.
 
 Recipient matching is case-insensitive, including historical mixed-case rows.
-Incoming recipients are normalized to lowercase. A suppressed message has its
+Incoming recipients are normalized to lowercase. Every To, Cc and Bcc recipient
+is checked, including arrays of header values and quoted display names containing
+commas. One suppressed recipient blocks the whole message; allowed recipients are
+not silently removed. Malformed lists and unsupported group syntax block the
+message without logging the raw address list. Prior cancellation by another
+module is preserved. An allowed message keeps its original headers.
+A suppressed message has its
 `send` flag set to false; watchdog messages redact the mailbox as `*@domain`.
 
 ```sh
@@ -107,8 +113,6 @@ soft-bounce windows 0–365 days, complaint windows and retention 0–3650 days.
   through those paths is **not suppressed** by this module. Verify your mail
   backend uses Drupal's mail manager; no Symfony Mailer event subscriber ships
   in this release.
-- Suppression is evaluated for one recipient, optionally with a display name.
-  Multi-recipient To, Cc and Bcc lists are not individually filtered.
 - This is an event receiver, not an inbound email parser or mail sender. It
   does not synchronize a Postmark server's suppression list.
 
