@@ -23,8 +23,27 @@ $settings['postmark_webhooks.webhook_secret'] = getenv('POSTMARK_WEBHOOK_SECRET'
 ```
 
 The secret is never stored in exported configuration or displayed in the admin
-form. An empty or missing secret makes the endpoint return **503** and record
+form. An empty, missing or non-string active secret makes the endpoint return **503** and record
 nothing. Missing or incorrect credentials return **401**.
+
+To rotate without interrupting requests in flight, deploy the new active secret
+and retain the old one temporarily in settings:
+
+```php
+$settings['postmark_webhooks.previous_webhook_secret'] = [
+  'secret' => getenv('POSTMARK_WEBHOOK_PREVIOUS_SECRET') ?: '',
+  'expires' => 1790000000, // Replace with an explicit Unix expiry timestamp.
+];
+```
+
+Choose the shortest practical overlap, update the Postmark dashboard credential,
+then remove the previous setting. The previous secret is accepted only while the
+current time is strictly before the integer expiry. At expiry it returns 401.
+Malformed previous settings are ignored; a valid active secret continues working.
+A previous credential never substitutes for a missing or malformed active one.
+Neither credential is read from Drupal configuration or included in diagnostics.
+`WebhookCredentials::rotationStatus()` reports only absent, invalid, active or
+expired; it does not reveal values. Expiry is fixed, never extended by requests.
 
 In your Postmark server's message stream, configure bounce, spam complaint and
 delivery webhooks with this URL shape, replacing the example host and password:

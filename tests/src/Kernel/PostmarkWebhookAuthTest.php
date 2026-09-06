@@ -462,4 +462,61 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
     $this->assertSame('clamped', $row['time_basis']);
   }
 
+  /**
+   * Previous credentials work only before a fixed expiry and can be removed.
+   */
+  public function testSecretRotationBoundaries(): void {
+    $settings = Settings::getAll();
+    $time = $this->createMock(TimeInterface::class);
+    $time->method('getRequestTime')->willReturn(100);
+    $time->method('getCurrentTime')->willReturnOnConsecutiveCalls(199, 199, 200, 201, 201);
+    $this->container->set('datetime.time', $time);
+    new Settings([
+      'postmark_webhooks.webhook_secret' => self::SECRET,
+      'postmark_webhooks.previous_webhook_secret' => ['secret' => 'previous-test-only', 'expires' => 200],
+    ] + $settings);
+    $this->assertSame(200, $this->receive($this->request(self::SECRET))->getStatusCode());
+    $this->assertSame(200, $this->receive($this->request('previous-test-only'))->getStatusCode());
+    $this->assertSame(401, $this->receive($this->request('previous-test-only'))->getStatusCode());
+    $this->assertSame(200, $this->receive($this->request(self::SECRET))->getStatusCode());
+    new Settings(['postmark_webhooks.webhook_secret' => self::SECRET] + $settings);
+    $this->assertSame(401, $this->receive($this->request('previous-test-only'))->getStatusCode());
+    $this->assertSame(1, $this->eventCount());
+  }
+
+  /**
+   * Malformed settings cannot authorize a request or expose their values.
+   */
+  public function testMalformedRotationSettings(): void {
+    $settings = Settings::getAll();
+    foreach ([NULL, '', [], 123, TRUE, new \stdClass()] as $active) {
+      new Settings([
+        'postmark_webhooks.webhook_secret' => $active,
+        'postmark_webhooks.previous_webhook_secret' => ['secret' => 'old-test-only', 'expires' => PHP_INT_MAX],
+      ] + $settings);
+      $response = $this->receive($this->request('old-test-only'));
+      $this->assertSame(503, $response->getStatusCode());
+      $this->assertSame('Service Unavailable', $response->getContent());
+    }
+    foreach ([
+      '', 42, [], ['secret' => []],
+      ['secret' => '', 'expires' => PHP_INT_MAX],
+      ['secret' => 'old-test-only', 'expires' => '9999999999'],
+      ['secret' => 'old-test-only', 'expires' => 0],
+      ['secret' => 'old-test-only', 'expires' => 1.5],
+    ] as $previous) {
+      new Settings([
+        'postmark_webhooks.webhook_secret' => self::SECRET,
+        'postmark_webhooks.previous_webhook_secret' => $previous,
+      ] + $settings);
+      $this->assertSame(401, $this->receive($this->request('old-test-only'))->getStatusCode());
+      $this->assertSame(200, $this->receive($this->request(self::SECRET))->getStatusCode());
+    }
+    $this->assertSame(1, $this->eventCount());
+    $config = $this->config('postmark_webhooks.settings')->getRawData();
+    $this->assertArrayNotHasKey('previous_webhook_secret', $config);
+    $this->assertStringNotContainsString(self::SECRET, json_encode($config));
+    $this->assertStringNotContainsString('old-test-only', json_encode($config));
+  }
+
 }
