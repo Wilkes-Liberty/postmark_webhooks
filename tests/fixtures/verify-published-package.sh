@@ -15,12 +15,31 @@ require_dist() {
 
 assert_published_dist() {
   local module="$1"
+  if [[ ! -d "$module" ]]; then
+    echo "Published module directory missing: $module" >&2
+    exit 1
+  fi
   if [[ -L "$module" || -e "$module/.git" ]]; then
     echo "Refusing a git checkout at $module; published verification needs the Composer dist." >&2
     exit 1
   fi
 }
 
+require_disposable_root() {
+  local path="$1"
+  local resolved
+  resolved="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$path")"
+  case "$resolved" in
+    /tmp/postmark-*|/private/tmp/postmark-*)
+      ;;
+    *)
+      echo "Refusing to delete unsafe path $resolved" >&2
+      exit 1
+      ;;
+  esac
+}
+
+require_disposable_root "$ROOT"
 rm -rf "$ROOT"
 mkdir -p "$ROOT"
 export POSTMARK_CI_DIR="$ROOT"
@@ -98,6 +117,7 @@ echo "Published package $VERSION sha1 $LOCK_SHA1 verified."
 # Composer-replace published alpha1 files with alpha2, then run alpha2 tests
 # (including interrupted-batch upgrade coverage that ships in the archive).
 UPGRADE_ROOT="${POSTMARK_PUBLISHED_UPGRADE_ROOT:-/tmp/postmark-published-upgrade}"
+require_disposable_root "$UPGRADE_ROOT"
 rm -rf "$UPGRADE_ROOT"
 mkdir -p "$UPGRADE_ROOT"
 export POSTMARK_CI_DIR="$UPGRADE_ROOT"
