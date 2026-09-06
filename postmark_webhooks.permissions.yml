@@ -1,3 +1,10 @@
 administer postmark webhook settings:
   title: 'Administer Postmark webhook settings'
   restrict access: true
+view postmark suppression:
+  title: 'View Postmark recipient suppression and evidence'
+  restrict access: true
+recover postmark hard bounces:
+  title: 'Recover Postmark hard bounces for a known source'
+  description: 'Also requires the view permission. Does not release complaints or opt-outs.'
+  restrict access: true

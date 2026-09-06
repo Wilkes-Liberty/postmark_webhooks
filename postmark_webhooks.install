@@ -12,6 +12,19 @@ use Drupal\Core\Database\SchemaObjectExistsException;
  * Implements hook_schema().
  */
 function postmark_webhooks_schema() {
+  $schema['postmark_operator_audit'] = [
+    'description' => 'Audited operator actions with pseudonymous subject references.',
+    'fields' => [
+      'aid' => ['type' => 'serial', 'not null' => TRUE],
+      'action' => ['type' => 'varchar', 'length' => 32, 'not null' => TRUE],
+      'target' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE, 'default' => ''],
+      'subject' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+      'uid' => ['type' => 'int', 'not null' => TRUE],
+      'created' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+    ],
+    'primary key' => ['aid'],
+    'indexes' => ['subject' => ['subject']],
+  ];
   $schema['postmark_intake_metrics'] = [
     'description' => 'Aggregate intake outcomes without mailbox labels.',
     'fields' => [
@@ -278,6 +291,28 @@ function postmark_webhooks_update_10004(): void {
         'last_seen' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
       ],
       'primary key' => ['outcome'],
+    ]);
+  }
+}
+
+/**
+ * Adds a minimal operator audit trail.
+ */
+function postmark_webhooks_update_10005(): void {
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('postmark_operator_audit')) {
+    $schema->createTable('postmark_operator_audit', [
+      'description' => 'Audited operator actions with pseudonymous subject references.',
+      'fields' => [
+        'aid' => ['type' => 'serial', 'not null' => TRUE],
+        'action' => ['type' => 'varchar', 'length' => 32, 'not null' => TRUE],
+        'target' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE, 'default' => ''],
+        'subject' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+        'uid' => ['type' => 'int', 'not null' => TRUE],
+        'created' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+      ],
+      'primary key' => ['aid'],
+      'indexes' => ['subject' => ['subject']],
     ]);
   }
 }

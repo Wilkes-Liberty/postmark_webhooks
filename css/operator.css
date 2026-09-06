@@ -1,0 +1,15 @@
+.postmark-webhooks-operator {
+  overflow-wrap: anywhere;
+}
+
+.postmark-webhooks-operator input,
+.postmark-webhooks-operator select,
+.postmark-webhooks-operator textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.postmark-webhooks-operator details,
+.postmark-webhooks-operator fieldset {
+  min-inline-size: 0;
+}
