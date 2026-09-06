@@ -27,7 +27,7 @@ function postmark_webhooks_schema() {
         'length' => 8,
         'not null' => TRUE,
         'default' => 'legacy',
-        'description' => 'provider, receipt, or legacy.',
+        'description' => 'provider, receipt, clamped, or legacy.',
       ],
       'server_id' => [
         'type' => 'varchar',
@@ -174,7 +174,7 @@ function postmark_webhooks_update_10002(array &$sandbox): void {
           'length' => 8,
           'not null' => TRUE,
           'default' => 'legacy',
-          'description' => 'provider, receipt, or legacy.',
+          'description' => 'provider, receipt, clamped, or legacy.',
         ],
         'server_id' => [
           'type' => 'varchar',
@@ -218,14 +218,19 @@ function postmark_webhooks_update_10002(array &$sandbox): void {
       $schema->createTable('postmark_suppression', $definition['postmark_suppression']);
     }
     $sandbox['last_eid'] = 0;
+    $maximum = $database->select('postmark_events');
+    $maximum->addExpression('MAX(eid)');
+    $sandbox['max_eid'] = (int) $maximum->execute()->fetchField();
   }
   $query = $database->select('postmark_events', 'pe')->fields('pe')
-    ->condition('eid', $sandbox['last_eid'], '>')->orderBy('eid')->range(0, 250);
+    ->condition('eid', $sandbox['last_eid'], '>')
+    ->condition('eid', $sandbox['max_eid'], '<=')->orderBy('eid')->range(0, 250);
   $events = $query->execute()->fetchAll();
   $store = new SuppressionStore($database);
   foreach ($events as $event) {
     $store->record((array) $event);
     $sandbox['last_eid'] = (int) $event->eid;
   }
-  $sandbox['#finished'] = count($events) < 250 ? 1 : 0.5;
+  $sandbox['#finished'] = count($events) < 250 || $sandbox['last_eid'] >= $sandbox['max_eid']
+    ? 1 : $sandbox['last_eid'] / $sandbox['max_eid'];
 }

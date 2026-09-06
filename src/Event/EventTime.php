@@ -37,7 +37,7 @@ final class EventTime {
     if (($errors && ($errors['warning_count'] || $errors['error_count'])) || $time < 0 || $time > $received + 300) {
       throw new \InvalidArgumentException('Occurrence time outside supported bounds.');
     }
-    return [min($time, $received), 'provider'];
+    return $time > $received ? [$received, 'clamped'] : [$time, 'provider'];
   }
 
 }

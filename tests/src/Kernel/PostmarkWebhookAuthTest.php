@@ -13,6 +13,7 @@ use Drupal\Core\Config\StorageComparer;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
 use Drupal\Core\Database\DatabaseExceptionWrapper;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\postmark_webhooks\Controller\PostmarkWebhookController;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
@@ -395,6 +396,10 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
   public function testProviderOccurrencePolicy(): void {
     $this->setSecret(self::SECRET);
     $now = \Drupal::time()->getCurrentTime();
+    $time = $this->createMock(TimeInterface::class);
+    $time->method('getRequestTime')->willReturn($now);
+    $time->method('getCurrentTime')->willReturn($now);
+    $this->container->set('datetime.time', $time);
     $base = ['RecordType' => 'Bounce', 'Type' => 'SoftBounce', 'Email' => 'timed@example.com'];
     $send = function (int $id, string $date) use ($base): int {
       return $this->receive($this->request(self::SECRET, json_encode($base + ['ID' => $id, 'BouncedAt' => $date])))->getStatusCode();
@@ -416,6 +421,7 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
     $this->assertSame(400, $send(7, gmdate('c', $now + 600)));
     $this->assertSame(200, $send(8, gmdate('c', $now + 120)));
     $this->assertSame($now, $policy->decide('timed@example.com')->occurred);
+    $this->assertSame('clamped', $policy->decide('timed@example.com')->timeBasis);
   }
 
   /**
@@ -432,6 +438,28 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
     finally {
       $this->assertSame(0, $this->eventCount());
     }
+  }
+
+  /**
+   * Long-running requests retain the same receipt and clamping reference.
+   */
+  public function testReceiptTimeIsConsistent(): void {
+    $this->setSecret(self::SECRET);
+    $time = $this->createMock(TimeInterface::class);
+    $time->method('getRequestTime')->willReturn(100);
+    $time->method('getCurrentTime')->willReturn(160);
+    $this->container->set('datetime.time', $time);
+    $body = json_encode([
+      'RecordType' => 'Bounce',
+      'Type' => 'SoftBounce',
+      'Email' => 'clock@example.com',
+      'BouncedAt' => gmdate('c', 150),
+    ]);
+    $this->assertSame(200, $this->receive($this->request(self::SECRET, $body))->getStatusCode());
+    $row = $this->container->get('database')->select('postmark_events')->fields('postmark_events')->execute()->fetchAssoc();
+    $this->assertSame(100, (int) $row['created']);
+    $this->assertSame(100, (int) $row['occurred']);
+    $this->assertSame('clamped', $row['time_basis']);
   }
 
 }

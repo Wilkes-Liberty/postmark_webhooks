@@ -176,7 +176,8 @@ use `BouncedAt`, delivery uses `DeliveredAt`, and subscription changes use
 `ChangedAt`. Other events can supply `ReceivedAt`. Missing timestamps use receipt
 time; migrated alpha rows use legacy receipt time. RFC 3339 timestamps with up to
 nine fractional digits are accepted. Invalid dates and timestamps more than five
-minutes ahead are rejected; smaller future skew is clamped to receipt time.
+minutes ahead are rejected; smaller future skew is clamped to the same receipt time stored in `created`
+and explicitly reported with the `clamped` time basis.
 Older events cannot replace newer state. Equal times use the identity digest as
 a deterministic tie breaker. Policy results identify the time basis used.
 
