@@ -178,7 +178,18 @@ final class HealthEvaluator {
    */
   private function providerCheck(): array {
     $results = $this->moduleHandler->invokeAll('postmark_webhooks_provider_health');
-    $status = is_string($results['status'] ?? NULL) ? $results['status'] : '';
+    $status = '';
+    if (is_string($results['status'] ?? NULL)) {
+      $status = $results['status'];
+    }
+    else {
+      foreach ($results as $result) {
+        if (is_array($result) && is_string($result['status'] ?? NULL)) {
+          $status = $result['status'];
+          break;
+        }
+      }
+    }
     if ($status === 'paused') {
       return $this->check('provider_delivery', 'warning', 'paused', 'A provider health hook reported paused delivery.');
     }

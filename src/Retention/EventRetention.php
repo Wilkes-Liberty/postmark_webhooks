@@ -22,6 +22,9 @@ final class EventRetention {
    * Counts expired history rows without deleting them.
    */
   public function expiredCount(int $cutoff): int {
+    if (!$this->database->schema()->tableExists('postmark_events')) {
+      return 0;
+    }
     return (int) $this->database->select('postmark_events', 'pe')
       ->condition('created', $cutoff, '<')
       ->countQuery()->execute()->fetchField();
