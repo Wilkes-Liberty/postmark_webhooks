@@ -3,3 +3,7 @@ bounce_suppression_days: 30
 complaint_suppression_days: 0
 event_retention_days: 90
 source_policies: []
+health_expected_activity_seconds: 0
+health_retention_backlog_warning: 250
+health_rotation_warning_seconds: 86400
+health_alert_cooldown_seconds: 3600

@@ -1,0 +1,30 @@
+<?php
+
+/**
+ * @file
+ * Captures health alerts and can simulate notification delivery failure.
+ */
+
+/**
+ * Implements hook_postmark_webhooks_health_alert().
+ */
+function postmark_health_alert_test_postmark_webhooks_health_alert(array $alert): void {
+  $state = \Drupal::state();
+  if ($state->get('postmark_health_alert_test.throw')) {
+    throw new \RuntimeException('Synthetic notification failure.');
+  }
+  $seen = $state->get('postmark_health_alert_test.alerts', []);
+  $seen[] = $alert;
+  $state->set('postmark_health_alert_test.alerts', $seen);
+}
+
+/**
+ * Implements hook_postmark_webhooks_provider_health().
+ */
+function postmark_health_alert_test_postmark_webhooks_provider_health(): array {
+  $status = \Drupal::state()->get('postmark_health_alert_test.provider');
+  if (!is_string($status) || $status === '') {
+    return [];
+  }
+  return ['status' => $status];
+}

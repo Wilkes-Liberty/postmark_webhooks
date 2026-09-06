@@ -64,11 +64,11 @@ function postmark_webhooks_mail_alter(array &$message): void {
  */
 function postmark_webhooks_cron(): void {
   $days = (int) (\Drupal::config('postmark_webhooks.settings')->get('event_retention_days') ?? 90);
-  if ($days <= 0) {
-    return;
+  if ($days > 0) {
+    $cutoff = \Drupal::time()->getRequestTime() - ($days * 86400);
+    \Drupal::service('postmark_webhooks.event_retention')->purgeBefore($cutoff);
   }
-  $cutoff = \Drupal::time()->getRequestTime() - ($days * 86400);
-  \Drupal::service('postmark_webhooks.event_retention')->purgeBefore($cutoff);
+  \Drupal::service('postmark_webhooks.health_alerts')->notify();
 }
 
 /**

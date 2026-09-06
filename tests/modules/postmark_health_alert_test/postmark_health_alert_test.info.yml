@@ -1,0 +1,8 @@
+name: Postmark health alert test
+description: Captures health alerts and optional provider status for kernel tests.
+package: Testing
+type: module
+hidden: true
+core_version_requirement: ^10.3 || ^11
+dependencies:
+  - postmark_webhooks:postmark_webhooks

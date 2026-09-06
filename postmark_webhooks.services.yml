@@ -11,9 +11,15 @@ services:
   postmark_webhooks.intake_metrics:
     class: Drupal\postmark_webhooks\Diagnostics\IntakeMetrics
     arguments: ['@database']
+  postmark_webhooks.health:
+    class: Drupal\postmark_webhooks\Diagnostics\HealthEvaluator
+    arguments: ['@config.factory', '@datetime.time', '@postmark_webhooks.intake_metrics', '@postmark_webhooks.event_retention', '@module_handler']
+  postmark_webhooks.health_alerts:
+    class: Drupal\postmark_webhooks\Diagnostics\HealthAlerts
+    arguments: ['@postmark_webhooks.health', '@state', '@config.factory', '@module_handler', '@logger.factory', '@datetime.time']
   postmark_webhooks.policy_preview:
     class: Drupal\postmark_webhooks\Diagnostics\PolicyPreview
-    arguments: ['@postmark_webhooks.suppression_policy', '@config.factory', '@module_handler', '@email.validator', '@datetime.time', '@postmark_webhooks.intake_metrics']
+    arguments: ['@postmark_webhooks.suppression_policy', '@config.factory', '@module_handler', '@email.validator', '@datetime.time', '@postmark_webhooks.intake_metrics', '@postmark_webhooks.health']
   postmark_webhooks.event_retention:
     class: Drupal\postmark_webhooks\Retention\EventRetention
     arguments: ['@database']

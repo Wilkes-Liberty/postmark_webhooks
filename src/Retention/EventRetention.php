@@ -19,6 +19,15 @@ final class EventRetention {
   public function __construct(private readonly Connection $database) {}
 
   /**
+   * Counts expired history rows without deleting them.
+   */
+  public function expiredCount(int $cutoff): int {
+    return (int) $this->database->select('postmark_events', 'pe')
+      ->condition('created', $cutoff, '<')
+      ->countQuery()->execute()->fetchField();
+  }
+
+  /**
    * Deletes at most one batch; concurrent runs may safely select the same IDs.
    */
   public function purgeBefore(int $cutoff): int {

@@ -165,9 +165,10 @@ class PostmarkPublicApiTest extends KernelTestBase {
     );
     $diagnostics = $preview->diagnostics();
     $this->assertSame(
-      ['enabled', 'secret_configured', 'previous_secret_status', 'coverage', 'intake'],
+      ['enabled', 'secret_configured', 'previous_secret_status', 'coverage', 'intake', 'health'],
       array_keys($diagnostics),
     );
+    $this->assertSame(['severity', 'endpoint_reachability', 'checks'], array_keys($diagnostics['health']));
     $this->assertSame(['core', 'mailer_plus', 'direct_symfony'], array_keys($diagnostics['coverage']));
     $this->assertTrue($diagnostics['coverage']['core']);
     $this->assertFalse($diagnostics['coverage']['direct_symfony']);

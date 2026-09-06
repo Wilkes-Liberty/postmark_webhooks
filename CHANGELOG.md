@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- #3621230: Add configurable webhook health evaluation, status-report and Drush output, and optional hook-based alerts that do not send mail. Quiet sites stay unknown unless an activity window is configured.
 - #3621229: Document the 1.x public suppression contract, mark implementation classes internal, and add an external-consumer example with contract tests. Core mail and the Mailer Plus adapter keep using that interface.
 - #3621228: Lead README and project-page copy with installation, correct event-storage and privacy claims, and consolidate the alpha1 upgrade runbook. The advertised Composer command remains `^1.0@alpha` until a stable package exists.
 - #3621227: Verify the Drupal.org 1.0.0-alpha2 archive through Composer, including an alpha1-to-alpha2 file replacement. Live Postmark acceptance is still outstanding.

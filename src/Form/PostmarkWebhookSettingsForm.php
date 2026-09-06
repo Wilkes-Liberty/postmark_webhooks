@@ -126,6 +126,44 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
       '#max'           => 3650,
     ];
 
+    $form['health'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Health alerts'),
+      '#open' => FALSE,
+    ];
+    $form['health']['health_expected_activity_seconds'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Expected accepted intake window (seconds)'),
+      '#description' => $this->t('0 leaves silence as unknown. Quiet sites are not reported broken unless you set a window.'),
+      '#default_value' => $config->get('health_expected_activity_seconds') ?? 0,
+      '#min' => 0,
+      '#max' => 31536000,
+    ];
+    $form['health']['health_retention_backlog_warning'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Expired history warning threshold'),
+      '#description' => $this->t('Warn when more than this many expired event rows remain. 0 disables the warning. Durable suppression is not counted.'),
+      '#default_value' => $config->get('health_retention_backlog_warning') ?? 250,
+      '#min' => 0,
+      '#max' => 1000000,
+    ];
+    $form['health']['health_rotation_warning_seconds'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Previous-secret expiry warning (seconds)'),
+      '#description' => $this->t('Warn when an active previous webhook secret expires within this many seconds. 0 disables the warning.'),
+      '#default_value' => $config->get('health_rotation_warning_seconds') ?? 86400,
+      '#min' => 0,
+      '#max' => 2592000,
+    ];
+    $form['health']['health_alert_cooldown_seconds'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Alert cooldown (seconds)'),
+      '#description' => $this->t('Repeated identical alerts wait this long. 0 emits only when the unhealthy set changes. This module does not send mail; other modules may subscribe to the health alert hook.'),
+      '#default_value' => $config->get('health_alert_cooldown_seconds') ?? 3600,
+      '#min' => 0,
+      '#max' => 604800,
+    ];
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -138,6 +176,10 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
       ->set('bounce_suppression_days', (int) $form_state->getValue('bounce_suppression_days'))
       ->set('complaint_suppression_days', (int) $form_state->getValue('complaint_suppression_days'))
       ->set('event_retention_days', (int) $form_state->getValue('event_retention_days'))
+      ->set('health_expected_activity_seconds', (int) $form_state->getValue('health_expected_activity_seconds'))
+      ->set('health_retention_backlog_warning', (int) $form_state->getValue('health_retention_backlog_warning'))
+      ->set('health_rotation_warning_seconds', (int) $form_state->getValue('health_rotation_warning_seconds'))
+      ->set('health_alert_cooldown_seconds', (int) $form_state->getValue('health_alert_cooldown_seconds'))
       ->save();
 
     parent::submitForm($form, $form_state);
