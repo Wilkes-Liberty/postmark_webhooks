@@ -94,6 +94,9 @@ before persistence leaves their provider identity available for a corrected retr
 Unknown, well-formed bounce types remain log-only for forward compatibility.
 Other record types do not require a bounce type. Unknown metadata is ignored.
 Authentication is checked before parsing.
+Previously accepted incomplete bounces are not repaired automatically: their
+retained identity still counts as a retry, and their missing classification
+cannot be reconstructed from local history.
 
 Configuration imports enforce the same numeric limits as the settings form:
 soft-bounce windows 0–365 days, complaint windows and retention 0–3650 days.
