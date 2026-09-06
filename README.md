@@ -1,5 +1,26 @@
 # Postmark Webhooks
 
+## Suppression inspector and recovery
+
+The Reports menu includes an exact-address suppression inspector. Grant
+`view postmark suppression` to trusted operators who need the effective decision,
+expiry, and up to 50 durable records and 50 recent events. The view omits raw
+payloads, descriptions and provider message identifiers. Addresses are submitted
+in a form, not placed in lookup URLs.
+
+Grant `recover postmark hard bounces` separately to operators allowed to confirm
+that a mailbox problem is repaired. Recovery releases only HardBounce and
+BadEmailAddress evidence for a known recipient/server/stream pair. Other sources,
+complaints, manual suppressions and unsubscribe records remain protected. Unknown
+sources, changed evidence and already released records are refused. No provider
+setting is changed and no mail is sent.
+
+The release and audit record commit together. The audit records actor, time,
+action, target evidence key and a keyed recipient reference; it stores no raw
+mailbox or free-text notes. These references are pseudonymous, not anonymous.
+Audit records are retained independently of event-history cleanup. Run database
+updates for the audit table introduced by update 10005.
+
 ## Policy preview and diagnostics
 
 The settings page links to a read-only policy preview. Select the real mail path

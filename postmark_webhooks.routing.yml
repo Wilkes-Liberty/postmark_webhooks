@@ -32,3 +32,26 @@ postmark_webhooks.settings:
     _permission: 'administer postmark webhook settings'
   options:
     _admin_route: TRUE
+
+postmark_webhooks.inspector:
+  path: '/admin/reports/postmark-suppression'
+  defaults:
+    _form: '\Drupal\postmark_webhooks\Form\SuppressionInspectorForm'
+    _title: 'Postmark suppression inspector'
+  requirements:
+    _permission: 'view postmark suppression'
+  options:
+    _admin_route: TRUE
+    no_cache: TRUE
+
+postmark_webhooks.recover:
+  path: '/admin/reports/postmark-suppression/recover/{state_key}'
+  defaults:
+    _form: '\Drupal\postmark_webhooks\Form\HardBounceRecoveryForm'
+    _title: 'Review hard-bounce recovery'
+  requirements:
+    _permission: 'recover postmark hard bounces'
+    state_key: '[a-f0-9]{64}'
+  options:
+    _admin_route: TRUE
+    no_cache: TRUE

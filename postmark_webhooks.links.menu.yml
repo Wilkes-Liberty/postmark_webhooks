@@ -4,3 +4,9 @@ postmark_webhooks.settings:
   route_name: postmark_webhooks.settings
   parent: system.admin_config_services
   weight: 10
+
+postmark_webhooks.inspector:
+  title: 'Postmark suppression inspector'
+  description: 'Inspect exact-address suppression and review eligible recovery.'
+  route_name: postmark_webhooks.inspector
+  parent: system.admin_reports

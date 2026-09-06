@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621130: Add a protected recipient inspector and CSRF-confirmed, audited source-specific hard-bounce recovery.
+
 - #3621131: Add read-only policy previews, structured Drush diagnostics and privacy-safe atomic intake counters.
 
 - #3621128: Add an optional Mailer Plus adapter that checks final recipients before native and compatibility transport.

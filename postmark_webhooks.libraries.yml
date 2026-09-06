@@ -1,0 +1,4 @@
+operator:
+  css:
+    component:
+      css/operator.css: {}
