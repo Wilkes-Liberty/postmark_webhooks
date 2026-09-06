@@ -43,8 +43,8 @@ final class HealthEvaluator {
     $last_accepted = $intake['accepted']['last_seen'];
     $retention_days = (int) ($config->get('event_retention_days') ?? 90);
     $expired = 0;
-    if ($retention_days > 0) {
-      $expired = $this->retention->expiredCount($now - $retention_days * 86400);
+    if ($retention_days > 0 && $backlog_limit > 0) {
+      $expired = $this->retention->expiredCount($now - $retention_days * 86400, $backlog_limit);
     }
 
     $checks = [
@@ -178,25 +178,25 @@ final class HealthEvaluator {
    */
   private function providerCheck(): array {
     $results = $this->moduleHandler->invokeAll('postmark_webhooks_provider_health');
-    $status = '';
+    $seen = [];
     if (is_string($results['status'] ?? NULL)) {
-      $status = $results['status'];
+      $seen[] = $results['status'];
     }
-    else {
-      foreach ($results as $result) {
-        if (is_array($result) && is_string($result['status'] ?? NULL)) {
-          $status = $result['status'];
-          break;
-        }
+    foreach ($results as $result) {
+      if (is_array($result) && is_string($result['status'] ?? NULL)) {
+        $seen[] = $result['status'];
       }
     }
-    if ($status === 'paused') {
-      return $this->check('provider_delivery', 'warning', 'paused', 'A provider health hook reported paused delivery.');
-    }
-    if ($status === 'error') {
-      return $this->check('provider_delivery', 'warning', 'error', 'A provider health hook reported a provider error.');
-    }
-    if ($status === 'available') {
+    foreach (['error', 'paused', 'available'] as $status) {
+      if (!in_array($status, $seen, TRUE)) {
+        continue;
+      }
+      if ($status === 'error') {
+        return $this->check('provider_delivery', 'warning', 'error', 'A provider health hook reported a provider error.');
+      }
+      if ($status === 'paused') {
+        return $this->check('provider_delivery', 'warning', 'paused', 'A provider health hook reported paused delivery.');
+      }
       return $this->check('provider_delivery', 'ok', 'available', 'A provider health hook reported available delivery.');
     }
     return $this->check('provider_delivery', 'unknown', 'not_queried', 'Provider delivery status was not queried.');
@@ -222,7 +222,7 @@ final class HealthEvaluator {
     if ($expires === NULL) {
       return NULL;
     }
-    return $expires - $now;
+    return max(0, $expires - $now);
   }
 
   /**

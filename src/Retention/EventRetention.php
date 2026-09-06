@@ -19,15 +19,19 @@ final class EventRetention {
   public function __construct(private readonly Connection $database) {}
 
   /**
-   * Counts expired history rows without deleting them.
+   * Counts expired history rows up to one past the warning threshold.
    */
-  public function expiredCount(int $cutoff): int {
+  public function expiredCount(int $cutoff, int $limit = 0): int {
     if (!$this->database->schema()->tableExists('postmark_events')) {
       return 0;
     }
-    return (int) $this->database->select('postmark_events', 'pe')
-      ->condition('created', $cutoff, '<')
-      ->countQuery()->execute()->fetchField();
+    $query = $this->database->select('postmark_events', 'pe')
+      ->fields('pe', ['eid'])
+      ->condition('created', $cutoff, '<');
+    if ($limit > 0) {
+      $query->range(0, $limit + 1);
+    }
+    return count($query->execute()->fetchCol());
   }
 
   /**
