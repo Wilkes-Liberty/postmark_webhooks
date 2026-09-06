@@ -229,5 +229,47 @@ a deterministic tie breaker. Policy results identify the time basis used.
 Run database updates after upgrading. Durable-state migration processes retained
 history in batches of 250 and normalizes legacy recipients. It cannot reconstruct
 events already discarded or purged by alpha1. Event insertion and suppression
-updates commit together. Source fields are preserved for future policy mapping;
-this version still evaluates all source evidence site-wide.
+updates commit together. Source fields support the explicit policy mappings
+described below; the default remains site-wide.
+
+## Source policies
+
+The default is site-wide suppression, including legacy and unknown sources.
+To scope a known stream, import an explicit mapping in
+`postmark_webhooks.settings`:
+
+```yaml
+source_policies:
+  - server_id: '23'
+    message_stream: broadcast
+    scope: source
+```
+
+`scope: global` explicitly retains site-wide behavior. Unmapped sources remain
+global. Invalid or duplicate mappings are rejected on import; invalid active
+mappings block mail when suppression is enabled. Existing installations without
+this key retain the default behavior and need no data migration.
+
+Trusted sending code can pass `new SourceContext('23', 'outbound')` as the second
+argument to `SuppressionPolicyInterface::decide()`. For Drupal core mail, put that
+object in `$params['postmark_webhooks_source']`. The context must match the actual
+transport's server and stream; do not derive it from user-submitted headers or
+recipient data. Without context, all source evidence applies conservatively.
+Transactional and broadcast streams only diverge when explicitly mapped and the
+caller supplies a reliable context. A malformed context blocks the whole message.
+
+Source labels in a payload do not authenticate the source. To restrict this
+endpoint's active and previous credentials to known sources, configure settings:
+
+```php
+$settings['postmark_webhooks.allowed_sources'] = [
+  ['server_id' => '23', 'message_stream' => 'broadcast'],
+];
+```
+
+With an allowlist, missing or unlisted source pairs return 403 without storage.
+An empty list permits none; a malformed list returns 503. Omitting the setting
+preserves the existing shared-endpoint behavior. Credential validation still
+happens first. Keep this allowlist in trusted deployment settings, not webhook
+metadata. Separate credentials per source are not implemented; all accepted
+credentials share this allowlist.

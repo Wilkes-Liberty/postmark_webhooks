@@ -3,6 +3,7 @@
 namespace Drupal\postmark_webhooks\EventSubscriber;
 
 use Drupal\Core\Config\ConfigEvents;
+use Drupal\postmark_webhooks\Source\SourcePolicy;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Config\ConfigImporterEvent;
 use Drupal\Core\Config\TypedConfigManagerInterface;
@@ -37,6 +38,13 @@ final class ConfigImportValidator implements EventSubscriberInterface {
     }
     $data = $importer->getStorageComparer()->getSourceStorage()->read($name);
     if ($data === FALSE) {
+      return;
+    }
+    try {
+      SourcePolicy::validate($data['source_policies'] ?? NULL);
+    }
+    catch (\InvalidArgumentException $exception) {
+      $importer->logError(new TranslatableMarkup('Postmark Webhooks source policies are invalid or duplicated.'));
       return;
     }
     $violations = $this->typedConfig->createFromNameAndData($name, $data)->validate();

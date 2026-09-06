@@ -6,6 +6,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
 use Drupal\postmark_webhooks\Event\EventIdentity;
+use Drupal\postmark_webhooks\Source\SourcePolicy;
 use Drupal\postmark_webhooks\Event\WebhookPayload;
 use Drupal\postmark_webhooks\Event\EventTime;
 use Drupal\postmark_webhooks\Suppression\SuppressionStore;
@@ -74,6 +75,15 @@ class PostmarkWebhookController extends ControllerBase {
     }
     catch (\JsonException | \InvalidArgumentException $exception) {
       return new Response('Bad Request', 400);
+    }
+
+    try {
+      if (!SourcePolicy::permitsIntake($data)) {
+        return new Response('Forbidden', 403);
+      }
+    }
+    catch (\InvalidArgumentException $exception) {
+      return new Response('Service Unavailable', 503);
     }
 
     // Normalize the recipient to lowercase so suppression lookups match

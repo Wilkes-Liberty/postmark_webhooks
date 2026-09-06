@@ -26,3 +26,21 @@ postmark_webhooks.settings:
         Range:
           min: 0
           max: 3650
+    source_policies:
+      type: sequence
+      label: 'Explicit server and stream policy mappings'
+      sequence:
+        type: mapping
+        mapping:
+          server_id:
+            type: string
+            label: 'Postmark server ID'
+          message_stream:
+            type: string
+            label: 'Postmark message stream'
+          scope:
+            type: string
+            label: 'Suppression scope'
+            constraints:
+              Choice:
+                choices: [global, source]

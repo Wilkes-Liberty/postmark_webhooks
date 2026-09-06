@@ -6,6 +6,7 @@
  */
 
 use Drupal\postmark_webhooks\Mail\RecipientList;
+use Drupal\postmark_webhooks\Source\SourceContext;
 
 /**
  * Implements hook_mail_alter().
@@ -25,6 +26,10 @@ function postmark_webhooks_mail_alter(array &$message): void {
     return;
   }
   try {
+    $source = $message['params']['postmark_webhooks_source'] ?? NULL;
+    if ($source !== NULL && !$source instanceof SourceContext) {
+      throw new \InvalidArgumentException('Invalid sending source context.');
+    }
     $recipients = RecipientList::parse($message['to'] ?? '');
     foreach ($message['headers'] ?? [] as $name => $value) {
       if (in_array(strtolower($name), ['to', 'cc', 'bcc'], TRUE)) {
@@ -34,11 +39,11 @@ function postmark_webhooks_mail_alter(array &$message): void {
   }
   catch (\InvalidArgumentException $exception) {
     $message['send'] = FALSE;
-    \Drupal::logger('postmark_webhooks')->warning('Blocked mail with an invalid recipient list.');
+    \Drupal::logger('postmark_webhooks')->warning('Blocked mail with an invalid recipient list or source context.');
     return;
   }
   foreach (array_unique($recipients) as $recipient) {
-    $reason = _postmark_webhooks_suppression_reason($recipient, $config);
+    $reason = _postmark_webhooks_suppression_reason($recipient, $config, $source);
     if ($reason !== NULL) {
       $message['send'] = FALSE;
       \Drupal::logger('postmark_webhooks')->info(
@@ -91,10 +96,13 @@ function _postmark_webhooks_redact_recipient(string $email): string {
  * Compatibility wrapper around the shared effective-decision service.
  * Recipients are normalized before indexed durable-state lookup.
  */
-function _postmark_webhooks_suppression_reason(string $email, $config): ?string {
-  $decision = \Drupal::service('postmark_webhooks.suppression_policy')->decide($email);
+function _postmark_webhooks_suppression_reason(string $email, $config, ?SourceContext $source = NULL): ?string {
+  $decision = \Drupal::service('postmark_webhooks.suppression_policy')->decide($email, $source);
   if (!$decision->suppressed) {
     return NULL;
+  }
+  if ($decision->reason === 'invalid_source_policy') {
+    return 'source policy configuration requires attention';
   }
   [$kind, $type] = explode(':', $decision->reason, 2);
   $label = ['spam' => 'spam complaint', 'hard' => 'hard bounce', 'soft' => 'soft bounce'][$kind];

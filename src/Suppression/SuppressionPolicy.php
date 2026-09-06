@@ -2,6 +2,9 @@
 
 namespace Drupal\postmark_webhooks\Suppression;
 
+use Drupal\postmark_webhooks\Source\SourceContext;
+use Drupal\postmark_webhooks\Source\SourcePolicy;
+
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Database\Connection;
@@ -23,10 +26,16 @@ final class SuppressionPolicy implements SuppressionPolicyInterface {
   /**
    * {@inheritdoc}
    */
-  public function decide(string $recipient): SuppressionDecision {
+  public function decide(string $recipient, ?SourceContext $source = NULL): SuppressionDecision {
     $config = $this->configFactory->get('postmark_webhooks.settings');
     if (!$config->get('enabled')) {
       return new SuppressionDecision(FALSE, 'disabled');
+    }
+    try {
+      $mappings = SourcePolicy::validate($config->get('source_policies'));
+    }
+    catch (\InvalidArgumentException $exception) {
+      return new SuppressionDecision(TRUE, 'invalid_source_policy');
     }
     $rows = $this->database->select('postmark_suppression', 'ps')
       ->fields('ps')
@@ -37,6 +46,9 @@ final class SuppressionPolicy implements SuppressionPolicyInterface {
     $result = new SuppressionDecision(FALSE, 'no_active_suppression');
     $priority = 0;
     foreach ($rows as $row) {
+      if (!SourcePolicy::applies($row, $source, $mappings)) {
+        continue;
+      }
       [$kind] = explode(':', $row->reason, 2);
       $rank = ['soft' => 1, 'hard' => 2, 'spam' => 3][$kind] ?? 0;
       $days = match ($kind) {
