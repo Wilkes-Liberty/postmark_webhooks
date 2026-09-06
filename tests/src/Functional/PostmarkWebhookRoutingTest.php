@@ -26,6 +26,30 @@ class PostmarkWebhookRoutingTest extends BrowserTestBase {
   protected $defaultTheme = 'stark';
 
   /**
+   * The protected preview is read-only and reports disabled or uncovered paths.
+   */
+  public function testPolicyPreviewForm(): void {
+    $path = 'admin/config/services/postmark-webhook/preview';
+    $this->drupalGet($path);
+    $this->assertSession()->statusCodeEquals(403);
+    $this->drupalLogin($this->drupalCreateUser(['administer postmark webhook settings']));
+    $this->drupalGet($path);
+    $this->submitForm(['recipient' => 'preview@example.com', 'mail_path' => 'direct_symfony'], 'Preview policy');
+    $this->assertSession()->pageTextContains('This mail path is not protected by this module.');
+    $this->config('postmark_webhooks.settings')->set('enabled', FALSE)->save();
+    $this->drupalGet($path);
+    $this->submitForm(['recipient' => 'preview@example.com', 'mail_path' => 'core'], 'Preview policy');
+    $this->assertSession()->pageTextContains('Suppression is disabled.');
+    $this->submitForm(['recipient' => 'second@example.com', 'mail_path' => 'core'], 'Preview policy');
+    $this->assertSession()->pageTextContains('Suppression is disabled.');
+    $this->assertSession()->responseHeaderContains('Cache-Control', 'no-cache');
+    $database = $this->container->get('database');
+    foreach (['postmark_events', 'postmark_suppression', 'postmark_intake_metrics'] as $table) {
+      $this->assertSame(0, (int) $database->select($table)->countQuery()->execute()->fetchField());
+    }
+  }
+
+  /**
    * Settings require permission and render a routed, secret-free endpoint URL.
    */
   public function testSettingsUrlAndAccess(): void {

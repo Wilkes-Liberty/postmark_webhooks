@@ -27,6 +27,7 @@ class PostmarkEndpointUrlTest extends KernelTestBase {
    * The settings form uses the routing context, including deployment prefixes.
    */
   public function testEndpointContexts(): void {
+    $this->installSchema('postmark_webhooks', ['postmark_intake_metrics']);
     $this->installConfig(['postmark_webhooks']);
     $this->container->get('router.builder')->rebuild();
     $context = $this->container->get('router.request_context');

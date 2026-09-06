@@ -24,7 +24,7 @@ class PostmarkRetentionTest extends KernelTestBase {
    * Repeated cleanup drains only expired history, including late arrivals.
    */
   public function testBoundedCleanup(): void {
-    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression', 'postmark_intake_metrics']);
     $this->installConfig(['postmark_webhooks']);
     $database = $this->container->get('database');
     $insert = $database->insert('postmark_events')->fields(['created', 'recipient']);
@@ -55,7 +55,7 @@ class PostmarkRetentionTest extends KernelTestBase {
    * Concurrent cleanup and intake preserve new events and suppression state.
    */
   public function testConcurrentCleanupAndIntake(): void {
-    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression', 'postmark_intake_metrics']);
     $database = $this->container->get('database');
     $insert = $database->insert('postmark_events')->fields(['created']);
     for ($i = 0; $i < 501; $i++) {

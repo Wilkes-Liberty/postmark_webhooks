@@ -29,7 +29,7 @@ class PostmarkSubscriptionTest extends KernelTestBase {
    */
   protected function setUp(): void {
     parent::setUp();
-    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression', 'postmark_intake_metrics']);
     $this->installConfig(['postmark_webhooks']);
     new Settings(['postmark_webhooks.webhook_secret' => 'subscription-test-only'] + Settings::getAll());
     $time = $this->createMock(TimeInterface::class);

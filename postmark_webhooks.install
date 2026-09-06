@@ -12,6 +12,15 @@ use Drupal\Core\Database\SchemaObjectExistsException;
  * Implements hook_schema().
  */
 function postmark_webhooks_schema() {
+  $schema['postmark_intake_metrics'] = [
+    'description' => 'Aggregate intake outcomes without mailbox labels.',
+    'fields' => [
+      'outcome' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE],
+      'total' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE, 'default' => 0],
+      'last_seen' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+    ],
+    'primary key' => ['outcome'],
+  ];
   $schema['postmark_events'] = [
     'description' => 'Log of Postmark bounce, spam, and delivery webhook events.',
     'fields' => [
@@ -252,5 +261,23 @@ function postmark_webhooks_update_10003(): void {
     if (!$schema->fieldExists('postmark_events', $name)) {
       $schema->addField('postmark_events', $name, $definition);
     }
+  }
+}
+
+/**
+ * Adds aggregate intake counters without reconstructing historical totals.
+ */
+function postmark_webhooks_update_10004(): void {
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('postmark_intake_metrics')) {
+    $schema->createTable('postmark_intake_metrics', [
+      'description' => 'Aggregate intake outcomes without mailbox labels.',
+      'fields' => [
+        'outcome' => ['type' => 'varchar', 'length' => 16, 'not null' => TRUE],
+        'total' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE, 'default' => 0],
+        'last_seen' => ['type' => 'int', 'size' => 'big', 'not null' => TRUE],
+      ],
+      'primary key' => ['outcome'],
+    ]);
   }
 }

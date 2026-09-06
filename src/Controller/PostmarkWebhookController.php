@@ -3,6 +3,7 @@
 namespace Drupal\postmark_webhooks\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\postmark_webhooks\Diagnostics\IntakeMetrics;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
 use Drupal\postmark_webhooks\Event\EventIdentity;
@@ -39,13 +40,14 @@ class PostmarkWebhookController extends ControllerBase {
     protected Connection $database,
     protected TimeInterface $time,
     protected SuppressionStore $suppressionStore,
+    protected IntakeMetrics $metrics,
   ) {}
 
   /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    return new static($container->get('database'), $container->get('datetime.time'), $container->get('postmark_webhooks.suppression_store'));
+    return new static($container->get('database'), $container->get('datetime.time'), $container->get('postmark_webhooks.suppression_store'), $container->get('postmark_webhooks.intake_metrics'));
   }
 
   /**
@@ -67,6 +69,7 @@ class PostmarkWebhookController extends ControllerBase {
 
     $body = stream_get_contents($request->getContent(TRUE), WebhookPayload::MAX_BYTES + 1);
     if ($body === FALSE || strlen($body) > WebhookPayload::MAX_BYTES) {
+      $this->metrics->recordRejection($this->time->getCurrentTime());
       return new Response('Payload Too Large', 413);
     }
     try {
@@ -74,15 +77,18 @@ class PostmarkWebhookController extends ControllerBase {
       [$occurred, $time_basis] = EventTime::resolve($data, $this->time->getRequestTime());
     }
     catch (\JsonException | \InvalidArgumentException $exception) {
+      $this->metrics->recordRejection($this->time->getCurrentTime());
       return new Response('Bad Request', 400);
     }
 
     try {
       if (!SourcePolicy::permitsIntake($data)) {
+        $this->metrics->recordRejection($this->time->getCurrentTime());
         return new Response('Forbidden', 403);
       }
     }
     catch (\InvalidArgumentException $exception) {
+      $this->metrics->recordRejection($this->time->getCurrentTime());
       return new Response('Service Unavailable', 503);
     }
 
@@ -122,6 +128,7 @@ class PostmarkWebhookController extends ControllerBase {
       }
       $database->insert('postmark_events')->fields($event)->execute();
       $this->suppressionStore->record($event);
+      $this->metrics->record('accepted', $this->time->getCurrentTime());
     }
     catch (IntegrityConstraintViolationException $exception) {
       $transaction->rollBack();
@@ -133,6 +140,7 @@ class PostmarkWebhookController extends ControllerBase {
       if (!$exists) {
         throw $exception;
       }
+      $this->metrics->record('duplicate', $this->time->getCurrentTime());
     }
     catch (\Throwable $exception) {
       $transaction->rollBack();

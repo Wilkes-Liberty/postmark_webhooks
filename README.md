@@ -1,5 +1,35 @@
 # Postmark Webhooks
 
+## Policy preview and diagnostics
+
+The settings page links to a read-only policy preview. Select the real mail path
+and optionally provide a trusted sending server/stream pair. It reports whether
+this module would block the message, the policy reason and expiry. It sends no
+mail and changes no consent or suppression evidence. Disabled suppression never
+appears as an enforced block; an unsupported mail path is identified explicitly.
+An allowed result does not guarantee provider acceptance or delivery.
+
+Drush 13 discovers the commands automatically. Use `--format=json` for structured
+output, for example:
+
+```sh
+drush postmark-webhooks:status recipient@example.com --format=json
+drush postmark-webhooks:status recipient@example.com --mail-path=mailer_plus --server-id=123 --message-stream=outbound --format=json
+drush postmark-webhooks:diagnostics --format=json
+```
+
+Diagnostics expose credential readiness, known adapter coverage, and aggregate
+accepted, duplicate and authenticated-rejection counts with last-seen timestamps.
+The counters begin at installation of update 10004; they do not reconstruct past
+traffic. Successful event storage and its accepted counter commit together.
+Counters survive history retention and contain no mailbox, message or secret
+labels. Rejection counters are best-effort during database outages, so malformed requests
+still receive their deterministic client error. Rejections cover authenticated
+payload/source errors, not authentication
+failures, upstream proxy errors or database outages; use infrastructure logs for
+those. The settings page and preview require the existing administration
+permission. Run database updates when upgrading.
+
 Receives Postmark bounce, spam, and delivery webhooks and suppresses outbound
 Drupal mail to addresses that bounced or complained. This module does not send
 mail. Pair it with [Postmark](https://www.drupal.org/project/postmark) or another

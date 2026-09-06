@@ -70,6 +70,7 @@ jobs:
             'repositories': [{'type': 'composer', 'url': 'https://packages.drupal.org/8'}],
             'require': {
               'composer/installers': '^2',
+              'drush/drush': '^13',
               'drupal/core-recommended': core,
               'drupal/core-composer-scaffold': core,
               'drupal/core-dev': core,
@@ -130,3 +131,5 @@ jobs:
       - name: Optional Mailer Plus integration
         if: matrix.mailer != ''
         run: python3 "$GITHUB_WORKSPACE/modules/postmark_webhooks_mailer/tests/run.py" /tmp/postmark-ci
+      - name: Drush discovery and JSON diagnostics
+        run: python3 "$GITHUB_WORKSPACE/tests/fixtures/drush-diagnostics.py" /tmp/postmark-ci

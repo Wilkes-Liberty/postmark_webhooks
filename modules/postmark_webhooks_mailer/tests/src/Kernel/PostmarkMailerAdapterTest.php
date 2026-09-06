@@ -36,7 +36,7 @@ class PostmarkMailerAdapterTest extends KernelTestBase {
     }
     parent::setUp();
     $this->installEntitySchema('user');
-    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression']);
+    $this->installSchema('postmark_webhooks', ['postmark_events', 'postmark_suppression', 'postmark_intake_metrics']);
     $this->installConfig(['postmark_webhooks', 'symfony_mailer', 'filter']);
     if (class_exists(MailerPlus::class)) {
       $this->installConfig(['mailer_policy']);

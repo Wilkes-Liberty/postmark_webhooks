@@ -12,6 +12,17 @@ postmark_webhooks.receive:
   options:
     no_cache: TRUE
 
+postmark_webhooks.preview:
+  path: '/admin/config/services/postmark-webhook/preview'
+  defaults:
+    _form: '\Drupal\postmark_webhooks\Form\PolicyPreviewForm'
+    _title: 'Postmark policy preview'
+  requirements:
+    _permission: 'administer postmark webhook settings'
+  options:
+    _admin_route: TRUE
+    no_cache: TRUE
+
 postmark_webhooks.settings:
   path: '/admin/config/services/postmark-webhook'
   defaults:
