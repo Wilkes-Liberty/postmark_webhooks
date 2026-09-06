@@ -28,6 +28,7 @@ final class EventRetention {
     return (bool) $this->database->select('postmark_events', 'pe')
       ->fields('pe', ['eid'])
       ->condition('created', $cutoff, '<')
+      ->orderBy('created')
       ->range($limit, 1)
       ->execute()
       ->fetchField();

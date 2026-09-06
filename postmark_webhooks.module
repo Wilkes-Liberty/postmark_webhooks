@@ -71,13 +71,17 @@ function postmark_webhooks_cron(): void {
     }
   }
   catch (\Throwable $exception) {
-    \Drupal::logger('postmark_webhooks')->error('Retention cleanup failed during cron.');
+    \Drupal::logger('postmark_webhooks')->error('Retention cleanup failed during cron: @message', [
+      '@message' => $exception->getMessage(),
+    ]);
   }
   try {
     \Drupal::service('postmark_webhooks.health_alerts')->notify();
   }
   catch (\Throwable $exception) {
-    \Drupal::logger('postmark_webhooks')->error('Health evaluation failed during cron.');
+    \Drupal::logger('postmark_webhooks')->error('Health evaluation failed during cron: @message', [
+      '@message' => $exception->getMessage(),
+    ]);
   }
 }
 

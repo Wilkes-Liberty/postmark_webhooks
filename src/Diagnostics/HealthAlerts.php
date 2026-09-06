@@ -119,7 +119,9 @@ final class HealthAlerts {
     }
     catch (\Throwable $exception) {
       try {
-        $logger->error('Postmark Webhooks health notification failed.');
+        $logger->error('Postmark Webhooks health notification failed: @message', [
+          '@message' => $exception->getMessage(),
+        ]);
       }
       catch (\Throwable $ignored) {
       }

@@ -379,7 +379,7 @@ function postmark_webhooks_requirements($phase): array {
       'title' => t('Postmark Webhooks: @id', ['@id' => $check['id']]),
       'value' => $check['status'],
       'severity' => $map[$check['severity']],
-      'description' => $check['detail'],
+      'description' => t('@detail', ['@detail' => $check['detail']]),
     ];
   }
   return $requirements;
