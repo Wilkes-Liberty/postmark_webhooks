@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621136: Add optional read-only provider reconciliation with reviewed digests and atomic local import checkpoints.
+
 - #3621135: Add audited recipient export and bounded history erasure while retaining suppression, and remove stored provider free text.
 
 - #3621130: Add a protected recipient inspector and CSRF-confirmed, audited source-specific hard-bounce recovery.

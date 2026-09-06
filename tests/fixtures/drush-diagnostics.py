@@ -39,3 +39,10 @@ assert json.loads(diagnostics)['secret_configured'] is False
 assert 'private@example.com' not in diagnostics
 assert json.loads(diagnostics)['intake']['accepted']['total'] == 0
 print('Drush discovery, aliases, JSON, disabled policy and unsupported paths pass.')
+
+drush('pm:enable', 'postmark_webhooks_reconcile', '-y')
+commands = json.loads(drush('list', '--format=json'))
+names = {item['name'] for item in commands['commands']}
+assert {'postmark-webhooks:reconcile-preview', 'postmark-webhooks:reconcile-apply',
+        'postmark-webhooks:reconcile-status'} <= names
+print('Optional reconciliation commands are discoverable without API credentials.')

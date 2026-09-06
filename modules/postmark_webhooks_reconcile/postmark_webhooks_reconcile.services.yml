@@ -1,0 +1,7 @@
+services:
+  postmark_webhooks_reconcile.reader:
+    class: Drupal\postmark_webhooks_reconcile\ProviderReader
+    arguments: ['@http_client', '@datetime.time']
+  postmark_webhooks_reconcile.reconciliation:
+    class: Drupal\postmark_webhooks_reconcile\Reconciliation
+    arguments: ['@database', '@postmark_webhooks_reconcile.reader', '@postmark_webhooks.suppression_store', '@datetime.time']

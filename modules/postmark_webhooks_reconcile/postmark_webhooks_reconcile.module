@@ -1,0 +1,13 @@
+<?php
+
+/**
+ * @file
+ * Cleanup for optional read-only provider reconciliation.
+ */
+
+/**
+ * Implements hook_cron().
+ */
+function postmark_webhooks_reconcile_cron(): void {
+  \Drupal::service('postmark_webhooks_reconcile.reconciliation')->prune();
+}

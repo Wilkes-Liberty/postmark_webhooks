@@ -1,5 +1,52 @@
 # Postmark Webhooks
 
+## Optional read-only provider reconciliation
+
+Enable `postmark_webhooks_reconcile` only if operators need to recover missed
+suppression evidence. The core receiver does not require an API token. Configure
+server tokens outside exported configuration, for example in settings.php:
+
+```php
+$settings['postmark_webhooks.reconciliation_tokens'] = [
+  '123' => getenv('POSTMARK_SERVER_TOKEN'),
+];
+```
+
+The reader uses only Postmark's documented `GET /server` and suppression-dump
+endpoints. It verifies the token's server ID, honors the intake source allowlist,
+requires TLS validation and disables redirects. It never creates, deletes or
+reactivates anything at Postmark. Only current provider suppression evidence is
+imported locally; this is not a replay of historical delivery events.
+
+Postmark documents inclusive date filters but no offset pagination for the dump.
+Preview one date at a time, inspect the aggregate evidence differences, then apply
+the returned review identifier:
+
+```sh
+drush postmark-webhooks:reconcile-preview 123 outbound 2026-09-01
+drush postmark-webhooks:reconcile-apply REVIEW_ID
+drush postmark-webhooks:reconcile-status REVIEW_ID
+```
+
+Each apply call processes at most 250 local records. Repeat it until status is
+`complete`. The checkpoint and suppression updates commit together; interrupted
+pages can be retried. Every apply fetches the provider dump again and requires its
+canonical digest to match the reviewed data. Changed data requires a fresh
+preview. Preview stores only source/date/digest/progress metadata, not recipient
+dumps or tokens, and makes no suppression changes. Reviews expire after 24 hours;
+cron removes expired metadata in batches of 250. CLI access is privileged host
+access and should be limited to authorized operators.
+
+Responses are bounded to 4 MiB and 10000 records per date. An oversized day is
+refused without partial import; it requires a separately reviewed migration
+approach. Rate-limit and provider errors preserve the checkpoint and omit remote
+body content. Imported records use the same ordered state service as live intake,
+so stale hard bounces cannot override newer releases and absent provider rows do
+not clear local consent, complaint or suppression evidence.
+
+API references: [suppression dump](https://postmarkapp.com/developer/api/suppressions-api)
+and [server identity](https://postmarkapp.com/developer/api/server-api).
+
 ## Recipient privacy controls
 
 The Reports menu has separate export and history-erasure forms. Grant
