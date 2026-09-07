@@ -125,5 +125,5 @@ drush "$UPGRADE" updatedb
 drush "$UPGRADE" cache:rebuild
 assert_diagnostics "$UPGRADE" "$WALKTHROUGH_SECRET"
 schema="$(drush "$UPGRADE" php:eval 'echo \Drupal::keyValue("system.schema")->get("postmark_webhooks");')"
-python3 -c 'import sys; schema=int(sys.argv[1] or 0); assert schema >= 10006, schema; print("schema version %s after updatedb" % schema)' "$schema"
+python3 -c 'import sys; schema=int(sys.argv[1] or 0); assert schema >= 10007, schema; print("schema version %s after updatedb" % schema)' "$schema"
 echo "Alpha1 upgrade walkthrough passed."

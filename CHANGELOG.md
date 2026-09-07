@@ -29,7 +29,7 @@ configured. The public suppression contract is unchanged.
 
 ### Upgrading from alpha1
 
-Alpha1 sites still run every core update through 10007. Follow the alpha2
+Alpha1 sites still run every module update through 10007. Follow the alpha2
 upgrade notes for 10001–10006, then 10007. There is no supported downgrade;
 restore the pre-upgrade dump with the previous package files.
 
