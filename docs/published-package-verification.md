@@ -39,8 +39,11 @@ after the run.
 
 ### Webhook verification
 
-`POST /webhooks` with JSON body field `"Verify": true` and HTTP Basic Auth (username `postmark`)
-created an outbound webhook. `POST /webhooks/{id}/verify` then reported
+`POST /webhooks` with JSON body field `"Verify": true` created an outbound
+webhook. The create body set `HttpAuth` username `postmark` and the settings
+secret as the password so Postmark authenticates to the Drupal receiver; that
+Basic Auth is not how the Postmark API itself is called.
+`POST /webhooks/{id}/verify` then reported
 Success true, "All 4 triggers verified successfully", each with StatusCode
 200:
 
