@@ -95,7 +95,7 @@ final class IntegrationOutbox {
         // Refresh the 120s lock before each row so a slow subscriber cannot
         // expire it mid-batch. Delivery remains at-least-once.
         if (!$this->lock->acquire('postmark_webhooks_outbox', 120.0)) {
-          break;
+          return $result + ['skipped' => 'lock'];
         }
         $id = $row['oid'];
         $result['attempted']++;

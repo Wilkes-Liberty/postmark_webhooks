@@ -199,6 +199,26 @@ class PostmarkIntegrationOutboxTest extends KernelTestBase {
   }
 
   /**
+   * A stolen lock mid-batch is reported instead of looking like a short page.
+   */
+  public function testDispatchReportsLockSkipMidBatch(): void {
+    $this->bounce('5');
+    $lock = $this->createMock(LockBackendInterface::class);
+    $lock->method('acquire')->willReturnOnConsecutiveCalls(TRUE, TRUE, FALSE);
+    $outbox = new IntegrationOutbox(
+      $this->container->get('database'),
+      $this->container->get('config.factory'),
+      $this->container->get('module_handler'),
+      $lock,
+      $this->container->get('logger.factory'),
+      $this->container->get('datetime.time'),
+    );
+    $result = $outbox->dispatch();
+    $this->assertSame('lock', $result['skipped']);
+    $this->assertSame(1, $result['attempted']);
+  }
+
+  /**
    * Unsupported versions, invalid JSON, and incomplete payloads fail once.
    */
   public function testPoisonPayloadFailsWithoutRetry(): void {
