@@ -5,6 +5,8 @@
  * Schema for optional reconciliation metadata, without stored provider dumps.
  */
 
+use Drupal\Core\Utility\UpdateException;
+
 /**
  * Implements hook_schema().
  */
@@ -56,9 +58,13 @@ function postmark_webhooks_reconcile_schema(): array {
  * Adds scheduled drift report storage for existing reconciliation installs.
  */
 function postmark_webhooks_reconcile_update_10001(): void {
-  $spec = postmark_webhooks_reconcile_schema()['postmark_drift_report'];
   $schema = \Drupal::database()->schema();
-  if (!$schema->tableExists('postmark_drift_report')) {
-    $schema->createTable('postmark_drift_report', $spec);
+  if ($schema->tableExists('postmark_drift_report')) {
+    return;
   }
+  $spec = postmark_webhooks_reconcile_schema()['postmark_drift_report'] ?? NULL;
+  if (!$spec) {
+    throw new UpdateException('postmark_webhooks_reconcile_schema() is missing postmark_drift_report.');
+  }
+  $schema->createTable('postmark_drift_report', $spec);
 }

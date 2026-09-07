@@ -7,6 +7,7 @@
 
 use Drupal\postmark_webhooks\Suppression\SuppressionStore;
 use Drupal\Core\Database\SchemaObjectExistsException;
+use Drupal\Core\Utility\UpdateException;
 
 /**
  * Implements hook_schema().
@@ -366,11 +367,15 @@ function postmark_webhooks_update_10006(array &$sandbox): void {
  * Adds the integration outbox for existing installs.
  */
 function postmark_webhooks_update_10007(): void {
-  $spec = postmark_webhooks_schema()['postmark_integration_outbox'];
   $schema = \Drupal::database()->schema();
-  if (!$schema->tableExists('postmark_integration_outbox')) {
-    $schema->createTable('postmark_integration_outbox', $spec);
+  if ($schema->tableExists('postmark_integration_outbox')) {
+    return;
   }
+  $spec = postmark_webhooks_schema()['postmark_integration_outbox'] ?? NULL;
+  if (!$spec) {
+    throw new UpdateException('postmark_webhooks_schema() is missing postmark_integration_outbox.');
+  }
+  $schema->createTable('postmark_integration_outbox', $spec);
 }
 
 /**
