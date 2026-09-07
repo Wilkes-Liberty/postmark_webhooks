@@ -84,24 +84,22 @@ final class IntegrationOutbox {
     try {
       $limit = max(1, min(250, (int) ($this->configFactory->get('postmark_webhooks.settings')->get('integration_events_batch') ?? 25)));
       $max_attempts = max(1, min(32, (int) ($this->configFactory->get('postmark_webhooks.settings')->get('integration_events_max_attempts') ?? 8)));
-      // The Drupal lock serializes workers. FOR UPDATE without a surrounding
-      // transaction is a no-op, and subscriber hooks must not hold row locks.
-      $ids = $this->database->select('postmark_integration_outbox', 'o')
-        ->fields('o', ['oid'])
+      $page = $this->database->select('postmark_integration_outbox', 'o')
+        ->fields('o')
         ->condition('status', 'pending')
         ->condition('available_at', $now, '<=')
         ->orderBy('oid')
         ->range(0, $limit)
-        ->execute()
-        ->fetchCol();
-      foreach ($ids as $id) {
+        ->execute();
+      while ($row = $page->fetchAssoc()) {
+        // Refresh the 120s lock before each row so a slow subscriber cannot
+        // expire it mid-batch. Delivery remains at-least-once.
+        if (!$this->lock->acquire('postmark_webhooks_outbox', 120.0)) {
+          break;
+        }
+        $id = $row['oid'];
         $result['attempted']++;
-        $row = $this->database->select('postmark_integration_outbox', 'o')
-          ->fields('o')
-          ->condition('oid', $id)
-          ->execute()
-          ->fetchAssoc();
-        if (!$row || $row['status'] !== 'pending') {
+        if ($row['status'] !== 'pending') {
           continue;
         }
         try {
