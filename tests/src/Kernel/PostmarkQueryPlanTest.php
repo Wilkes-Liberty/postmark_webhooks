@@ -90,9 +90,16 @@ class PostmarkQueryPlanTest extends KernelTestBase {
       ->orderBy('eid')
       ->range(0, 25);
 
+    $oldest = $database->select('postmark_events', 'pe')
+      ->fields('pe', ['created'])
+      ->condition('created', 100, '<')
+      ->orderBy('created')
+      ->range(0, 1);
+
     $this->assertIndexAccess($this->explain($cleanup), 'created', 'cleanup');
     $this->assertIndexAccess($this->explain($lookup), 'recipient', 'lookup');
     $this->assertIndexAccess($this->explain($timeline), 'message_id', 'timeline');
+    $this->assertIndexAccess($this->explain($oldest), 'created', 'oldest');
   }
 
   /**

@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Drupal\postmark_webhooks\Drush\Commands;
 
 use Consolidation\OutputFormatters\StructuredData\UnstructuredData;
+use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\postmark_webhooks\Diagnostics\HealthEvaluator;
 use Drupal\postmark_webhooks\Diagnostics\PolicyPreview;
 use Drupal\postmark_webhooks\Integration\IntegrationOutbox;
+use Drupal\postmark_webhooks\Retention\EventRetention;
 use Drupal\postmark_webhooks\Source\SourceContext;
 use Drush\Attributes as CLI;
 use Drush\Commands\DrushCommands;
@@ -25,6 +28,9 @@ final class PostmarkWebhookCommands extends DrushCommands {
     private readonly PolicyPreview $preview,
     private readonly HealthEvaluator $health,
     private readonly IntegrationOutbox $outbox,
+    private readonly EventRetention $retention,
+    private readonly ConfigFactoryInterface $configFactory,
+    private readonly TimeInterface $time,
   ) {
     parent::__construct();
   }
@@ -37,6 +43,9 @@ final class PostmarkWebhookCommands extends DrushCommands {
       $container->get('postmark_webhooks.policy_preview'),
       $container->get('postmark_webhooks.health'),
       $container->get('postmark_webhooks.integration_outbox'),
+      $container->get('postmark_webhooks.event_retention'),
+      $container->get('config.factory'),
+      $container->get('datetime.time'),
     );
   }
 
@@ -99,6 +108,39 @@ final class PostmarkWebhookCommands extends DrushCommands {
   #[CLI\Command(name: 'postmark-webhooks:outbox-dispatch', aliases: ['pm-wh:outbox-dispatch'])]
   public function outboxDispatch(array $options = ['format' => 'json']): UnstructuredData {
     return new UnstructuredData($this->outbox->dispatch());
+  }
+
+  /**
+   * Drains expired event history in bounded batches without sending mail.
+   */
+  #[CLI\Command(name: 'postmark-webhooks:retention-drain', aliases: ['pm-wh:retention-drain'])]
+  #[CLI\Option(name: 'batches', description: 'Batches of 250 rows. Defaults to the configured cron count.')]
+  #[CLI\Option(name: 'seconds', description: 'Wall-time budget. Defaults to the configured cron budget.')]
+  public function retentionDrain(
+    array $options = [
+      'format' => 'json',
+      'batches' => NULL,
+      'seconds' => NULL,
+    ],
+  ): UnstructuredData {
+    $config = $this->configFactory->get('postmark_webhooks.settings');
+    $days = (int) ($config->get('event_retention_days') ?? 90);
+    if ($days <= 0) {
+      return new UnstructuredData([
+        'deleted' => 0,
+        'batches' => 0,
+        'stopped' => 'disabled',
+        'oldest_expired' => NULL,
+      ]);
+    }
+    $batches = $options['batches'] === NULL
+      ? (int) ($config->get('event_retention_batches') ?? 1)
+      : (int) $options['batches'];
+    $budget = $options['seconds'] === NULL
+      ? (int) ($config->get('event_retention_time_budget_seconds') ?? 0)
+      : (int) $options['seconds'];
+    $cutoff = $this->time->getRequestTime() - ($days * 86400);
+    return new UnstructuredData($this->retention->drain($cutoff, $batches, $budget));
   }
 
 }

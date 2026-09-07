@@ -49,3 +49,11 @@ receiver. Both Drupal/PHP fixtures pass. Queries use Drupal's portable database
 API. Indexed cleanup and lookup are asserted on MySQL, MariaDB and SQLite in
 CI at a mixed-age 5,000-row scale; see [database-verification.md](database-verification.md).
 This 100,000-row ANALYZE sample remains PostgreSQL-only.
+
+Issue #3621235 keeps the 250-row batch size. A drain is N sequential batches
+under a lock, with an optional wall-time budget. At the measured ~12–15 ms per
+250-row delete on these PostgreSQL fixtures, ten batches would be on the order
+of 120–150 ms of delete time plus select overhead. That is a single local
+sample, not a production throughput guarantee. The default remains one batch
+per cron run so existing sites keep the same cleanup rate until an operator
+raises `event_retention_batches` or runs `drush postmark-webhooks:retention-drain`.

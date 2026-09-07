@@ -2,6 +2,8 @@ enabled: true
 bounce_suppression_days: 30
 complaint_suppression_days: 0
 event_retention_days: 90
+event_retention_batches: 1
+event_retention_time_budget_seconds: 0
 source_policies: []
 health_expected_activity_seconds: 0
 health_retention_backlog_warning: 250
