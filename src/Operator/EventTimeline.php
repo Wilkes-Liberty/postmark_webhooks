@@ -97,7 +97,9 @@ final class EventTimeline {
     }
     $recipients = [];
     foreach ($rows as $row) {
-      $recipients[$row->recipient] = $this->policy->decide($row->recipient)->suppressed;
+      if (!array_key_exists($row->recipient, $recipients)) {
+        $recipients[$row->recipient] = $this->policy->decide($row->recipient)->suppressed;
+      }
     }
     return [
       'message_id' => $message_id,
