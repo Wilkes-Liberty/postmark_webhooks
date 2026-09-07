@@ -22,7 +22,7 @@ use Drupal\Core\Site\Settings;
 final class OperatorAudit {
 
   /**
-   * audit_chain channel name (bound into row hashes — do not rename).
+   * Audit_chain channel name bound into row hashes. Do not rename.
    */
   public const CHAIN_CHANNEL = 'postmark_webhooks';
 
