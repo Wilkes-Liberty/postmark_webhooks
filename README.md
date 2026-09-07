@@ -8,15 +8,14 @@ mail backend that uses Drupal's mail manager.
 Requires PHP 8.3 or later and Drupal 10.3 or 11. The module appears in the
 **Chronicle** package group on the Extend page.
 
-Installation, alpha1 upgrades, interruption recovery and restore-based rollback
-are in [docs/installation-upgrade.md](docs/installation-upgrade.md). Keep using
-`composer require drupal/postmark_webhooks:^1.0@alpha` until a stable 1.0.0
-package is published.
+Installation, alpha1 and alpha2 upgrades, interruption recovery and
+restore-based rollback are in
+[docs/installation-upgrade.md](docs/installation-upgrade.md).
 
 ## Installation and configuration
 
 ```sh
-composer require drupal/postmark_webhooks:^1.0@alpha
+composer require drupal/postmark_webhooks:^1.0
 drush en postmark_webhooks
 ```
 
@@ -106,6 +105,12 @@ See [Postmark's webhook security documentation](https://postmarkapp.com/develope
 Configure suppression and retention at
 `/admin/config/services/postmark-webhook`. The required permission is
 `administer postmark webhook settings`.
+
+## Upgrading from 1.0.0-alpha2
+
+Back up the database, `composer require drupal/postmark_webhooks:^1.0`, then
+run `drush updatedb -y` and `drush cache:rebuild`. Alpha2 sites run update
+10007. Optional features stay off until configured.
 
 ## Upgrading from 1.0.0-alpha1
 
@@ -319,8 +324,8 @@ With an allowlist, missing or unlisted source pairs return 403 without storage.
 An empty list permits none; a malformed list returns 503. Omitting the setting
 preserves the existing shared-endpoint behavior. Credential validation still
 happens first. Keep this allowlist in trusted deployment settings, not webhook
-metadata. Separate credentials per source are not implemented; all accepted
-credentials share this allowlist.
+metadata. Named `source_profiles` bind independent credentials to server and
+stream pairs; the shared `allowed_sources` list applies to the shared secret.
 
 ## Subscription changes and recovery
 
@@ -532,8 +537,8 @@ and [server identity](https://postmarkapp.com/developer/api/server-api).
   not automatically synchronize or alter a provider suppression list.
 - History erasure and event retention do not restore consent or delete durable
   suppression. Deleting history is not a reactivation.
-- Separate webhook credentials per source are not implemented; accepted
-  credentials share one allowlist.
+- Named `source_profiles` are optional. The shared secret and `allowed_sources`
+  remain the default.
 
 ## Development
 

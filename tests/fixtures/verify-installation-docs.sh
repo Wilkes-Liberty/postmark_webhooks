@@ -104,7 +104,7 @@ echo "=== Fresh install (README commands) ==="
 INSTALL="$BASE-install"
 remove_disposable_root "$INSTALL"
 cp -a "$BASE" "$INSTALL"
-require_dist "$INSTALL" "drupal/postmark_webhooks:^1.0@alpha"
+require_dist "$INSTALL" "drupal/postmark_webhooks:^1.0"
 install_site "$INSTALL" "$WALKTHROUGH_SECRET"
 drush "$INSTALL" pm:enable postmark_webhooks
 drush "$INSTALL" cache:rebuild
@@ -120,10 +120,10 @@ cp -a "$BASE" "$UPGRADE"
 require_dist "$UPGRADE" "drupal/postmark_webhooks:1.0.0-alpha1"
 install_site "$UPGRADE" "$WALKTHROUGH_SECRET"
 drush "$UPGRADE" pm:enable postmark_webhooks
-require_dist "$UPGRADE" "drupal/postmark_webhooks:^1.0@alpha"
+require_dist "$UPGRADE" "drupal/postmark_webhooks:^1.0"
 drush "$UPGRADE" updatedb
 drush "$UPGRADE" cache:rebuild
 assert_diagnostics "$UPGRADE" "$WALKTHROUGH_SECRET"
 schema="$(drush "$UPGRADE" php:eval 'echo \Drupal::keyValue("system.schema")->get("postmark_webhooks");')"
-python3 -c 'import sys; schema=int(sys.argv[1] or 0); assert schema >= 10006, schema; print("schema version %s after updatedb" % schema)' "$schema"
+python3 -c 'import sys; schema=int(sys.argv[1] or 0); assert schema >= 10007, schema; print("schema version %s after updatedb" % schema)' "$schema"
 echo "Alpha1 upgrade walkthrough passed."
