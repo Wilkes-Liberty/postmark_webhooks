@@ -56,9 +56,9 @@ function postmark_webhooks_reconcile_schema(): array {
  * Adds scheduled drift report storage for existing reconciliation installs.
  */
 function postmark_webhooks_reconcile_update_10001(): void {
-  $schema = postmark_webhooks_reconcile_schema()['postmark_drift_report'];
-  $database = \Drupal::database();
-  if (!$database->schema()->tableExists('postmark_drift_report')) {
-    $database->schema()->createTable('postmark_drift_report', $schema);
+  $spec = postmark_webhooks_reconcile_schema()['postmark_drift_report'];
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('postmark_drift_report')) {
+    $schema->createTable('postmark_drift_report', $spec);
   }
 }

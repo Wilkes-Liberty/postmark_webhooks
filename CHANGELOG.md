@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- #3621301: Create the integration outbox and drift-report tables from hook_schema() during updates so Drupal 11 no longer fatals on the removed drupal_get_module_schema() helper.
+- #3621301: Create the integration outbox and drift-report tables from hook_schema() during updates. Drupal 11 removed drupal_get_module_schema(), which caused updatedb to fail.
 
 ## [1.0.0] - 2026-09-07
 

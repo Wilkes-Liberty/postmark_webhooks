@@ -366,10 +366,10 @@ function postmark_webhooks_update_10006(array &$sandbox): void {
  * Adds the integration outbox for existing installs.
  */
 function postmark_webhooks_update_10007(): void {
-  $schema = postmark_webhooks_schema()['postmark_integration_outbox'];
-  $database = \Drupal::database();
-  if (!$database->schema()->tableExists('postmark_integration_outbox')) {
-    $database->schema()->createTable('postmark_integration_outbox', $schema);
+  $spec = postmark_webhooks_schema()['postmark_integration_outbox'];
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('postmark_integration_outbox')) {
+    $schema->createTable('postmark_integration_outbox', $spec);
   }
 }
 
