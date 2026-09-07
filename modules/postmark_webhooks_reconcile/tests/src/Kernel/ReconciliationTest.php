@@ -251,8 +251,7 @@ class ReconciliationTest extends KernelTestBase {
   }
 
   /**
-   * Existing reconciliation sites get drift-report storage without the
-   * removed helper.
+   * Existing sites get drift-report storage without the removed helper.
    */
   public function testUpdateCreatesDriftReportTable(): void {
     $schema = $this->container->get('database')->schema();
