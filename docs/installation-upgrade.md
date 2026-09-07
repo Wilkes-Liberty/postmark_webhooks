@@ -144,9 +144,11 @@ those legacy fields without changing suppression.
 
 ## Maintenance
 
-Each cron run deletes at most 250 expired event rows. Durable suppression is
-not deleted. Backlogs can remain older than the configured retention age if cron
-cannot keep up. Disabling suppression does not delete evidence.
+Each cron run deletes at most 250 expired event rows per configured batch
+(default one batch). Durable suppression is not deleted. Backlogs can remain
+older than the configured retention age if cron cannot keep up; raise
+`event_retention_batches` or run `drush postmark-webhooks:retention-drain`.
+Disabling suppression does not delete evidence.
 
 Recipient export streams 250-row pages and is audited. Protect the download.
 

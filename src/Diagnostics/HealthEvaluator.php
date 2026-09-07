@@ -43,8 +43,13 @@ final class HealthEvaluator {
     $last_accepted = $intake['accepted']['last_seen'];
     $retention_days = (int) ($config->get('event_retention_days') ?? 90);
     $expired_beyond = FALSE;
-    if ($retention_days > 0 && $backlog_limit > 0) {
-      $expired_beyond = $this->retention->expiredExceeds($now - $retention_days * 86400, $backlog_limit);
+    $oldest_expired = NULL;
+    if ($retention_days > 0) {
+      $cutoff = $now - $retention_days * 86400;
+      $oldest_expired = $this->retention->oldestExpired($cutoff);
+      if ($backlog_limit > 0) {
+        $expired_beyond = $this->retention->expiredExceeds($cutoff, $backlog_limit);
+      }
     }
 
     $checks = [
@@ -73,6 +78,7 @@ final class HealthEvaluator {
       'retention' => [
         'exceeds_warning_threshold' => $expired_beyond,
         'warning_threshold' => $backlog_limit,
+        'oldest_expired' => $oldest_expired,
       ],
       'rotation' => [
         'status' => $credentials->rotationStatus($now),

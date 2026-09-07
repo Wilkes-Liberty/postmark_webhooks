@@ -119,6 +119,7 @@ deprecation.
 
 Supported exported keys on `postmark_webhooks.settings`: `enabled`,
 `bounce_suppression_days`, `complaint_suppression_days`, `event_retention_days`,
+`event_retention_batches`, `event_retention_time_budget_seconds`,
 `source_policies`. Webhook secrets, previous-secret overlap, source allowlists,
 source profiles and reconciliation tokens stay in `settings.php`, not
 configuration.

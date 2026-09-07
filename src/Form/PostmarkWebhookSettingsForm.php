@@ -128,6 +128,22 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
       '#min'           => 0,
       '#max'           => 3650,
     ];
+    $form['suppression']['event_retention_batches'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Retention batches per cron run'),
+      '#description' => $this->t('Each batch deletes at most 250 expired rows. The default is 1, matching previous cron behavior. Raise this only when ordinary cron cannot keep up. Maximum 40.'),
+      '#default_value' => $config->get('event_retention_batches') ?? 1,
+      '#min' => 1,
+      '#max' => 40,
+    ];
+    $form['suppression']['event_retention_time_budget_seconds'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Retention time budget (seconds)'),
+      '#description' => $this->t('0 stops only after the configured batch count. A positive budget also stops the drain when wall time is exhausted, even if batches remain.'),
+      '#default_value' => $config->get('event_retention_time_budget_seconds') ?? 0,
+      '#min' => 0,
+      '#max' => 120,
+    ];
 
     $form['health'] = [
       '#type' => 'details',
@@ -213,6 +229,8 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
       ->set('bounce_suppression_days', (int) $form_state->getValue('bounce_suppression_days'))
       ->set('complaint_suppression_days', (int) $form_state->getValue('complaint_suppression_days'))
       ->set('event_retention_days', (int) $form_state->getValue('event_retention_days'))
+      ->set('event_retention_batches', (int) $form_state->getValue('event_retention_batches'))
+      ->set('event_retention_time_budget_seconds', (int) $form_state->getValue('event_retention_time_budget_seconds'))
       ->set('health_expected_activity_seconds', (int) $form_state->getValue('health_expected_activity_seconds'))
       ->set('health_retention_backlog_warning', (int) $form_state->getValue('health_retention_backlog_warning'))
       ->set('health_rotation_warning_seconds', (int) $form_state->getValue('health_rotation_warning_seconds'))

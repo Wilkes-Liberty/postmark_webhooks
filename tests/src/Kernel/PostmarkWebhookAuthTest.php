@@ -418,7 +418,13 @@ class PostmarkWebhookAuthTest extends KernelTestBase {
   public function testConfigWindowConstraints(): void {
     $manager = $this->container->get('config.typed');
     $data = $this->config('postmark_webhooks.settings')->getRawData();
-    foreach (['bounce_suppression_days' => 365, 'complaint_suppression_days' => 3650, 'event_retention_days' => 3650] as $key => $max) {
+    foreach ([
+      'bounce_suppression_days' => 365,
+      'complaint_suppression_days' => 3650,
+      'event_retention_days' => 3650,
+      'event_retention_batches' => 40,
+      'event_retention_time_budget_seconds' => 120,
+    ] as $key => $max) {
       foreach ([-1, $max + 1] as $invalid) {
         $violations = $manager->createFromNameAndData('postmark_webhooks.settings', [$key => $invalid] + $data)->validate();
         $this->assertGreaterThan(0, count($violations));

@@ -11,7 +11,7 @@ send mail.
 | `secret` | Active settings-only webhook secret is present |
 | `rotation` | Previous secret absent, active, expiring, expired or invalid |
 | `intake_silence` | Last accepted intake versus an optional activity window |
-| `retention_backlog` | Whether expired event rows exceed a warning threshold |
+| `retention_backlog` | Whether expired event rows exceed a warning threshold. The health report also includes `oldest_expired`, an indexed one-row probe |
 | `source_health` | Always unknown. Counters have no source labels. Malformed source profiles report `malformed_profiles` because intake returns 503 |
 | `endpoint_reachability` | Always `unproven` from local counters |
 | `provider_delivery` | Optional hook; default `not_queried` |

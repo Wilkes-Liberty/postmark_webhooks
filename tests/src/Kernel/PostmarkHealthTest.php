@@ -123,6 +123,7 @@ class PostmarkHealthTest extends KernelTestBase {
     $database->insert('postmark_events')->fields(['created', 'event_type', 'description'])->values([1, 'Delivery', ''])->execute();
     $report = $this->container->get('postmark_webhooks.health')->evaluate(200000);
     $this->assertSame('backlogged', $this->checkStatus($report, 'retention_backlog'));
+    $this->assertSame(1, $report['retention']['oldest_expired']);
   }
 
   /**

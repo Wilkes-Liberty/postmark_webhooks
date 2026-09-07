@@ -28,7 +28,7 @@ services:
     arguments: ['@postmark_webhooks.suppression_policy', '@config.factory', '@module_handler', '@email.validator', '@datetime.time', '@postmark_webhooks.intake_metrics', '@postmark_webhooks.health']
   postmark_webhooks.event_retention:
     class: Drupal\postmark_webhooks\Retention\EventRetention
-    arguments: ['@database']
+    arguments: ['@database', '@lock']
   postmark_webhooks.config_import_validator:
     class: Drupal\postmark_webhooks\EventSubscriber\ConfigImportValidator
     arguments: ['@config.typed']

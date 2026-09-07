@@ -26,6 +26,20 @@ postmark_webhooks.settings:
         Range:
           min: 0
           max: 3650
+    event_retention_batches:
+      type: integer
+      label: 'Retention batches per cron run'
+      constraints:
+        Range:
+          min: 1
+          max: 40
+    event_retention_time_budget_seconds:
+      type: integer
+      label: 'Retention wall-time budget (seconds; 0 = batch count only)'
+      constraints:
+        Range:
+          min: 0
+          max: 120
     health_expected_activity_seconds:
       type: integer
       label: 'Expected accepted-intake window (seconds; 0 = silence is unknown)'

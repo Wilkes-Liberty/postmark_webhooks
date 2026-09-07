@@ -64,10 +64,16 @@ function postmark_webhooks_mail_alter(array &$message): void {
  */
 function postmark_webhooks_cron(): void {
   try {
-    $days = (int) (\Drupal::config('postmark_webhooks.settings')->get('event_retention_days') ?? 90);
+    $config = \Drupal::config('postmark_webhooks.settings');
+    $days = (int) ($config->get('event_retention_days') ?? 90);
     if ($days > 0) {
       $cutoff = \Drupal::time()->getRequestTime() - ($days * 86400);
-      \Drupal::service('postmark_webhooks.event_retention')->purgeBefore($cutoff);
+      $batches = (int) ($config->get('event_retention_batches') ?? 1);
+      $budget = (int) ($config->get('event_retention_time_budget_seconds') ?? 0);
+      $result = \Drupal::service('postmark_webhooks.event_retention')->drain($cutoff, $batches, $budget);
+      if (($result['stopped'] ?? '') === 'lock') {
+        \Drupal::logger('postmark_webhooks')->notice('Retention drain skipped because another run holds the lock.');
+      }
     }
   }
   catch (\Throwable $exception) {

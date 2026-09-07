@@ -9,6 +9,7 @@ use Drupal\Component\Datetime\Time;
 use Drupal\postmark_webhooks\Diagnostics\IntakeMetrics;
 use Drupal\postmark_webhooks\Retention\EventRetention;
 use Drupal\Core\Database\Database;
+use Drupal\Core\Lock\NullLockBackend;
 use Drupal\Core\Site\Settings;
 use Drupal\postmark_webhooks\Suppression\SuppressionStore;
 use Drupal\postmark_webhooks\Controller\PostmarkWebhookController;
@@ -31,7 +32,7 @@ fwrite(STDOUT, "ready\n");
 // Every worker waits until the parent has observed all ready signals.
 fgets(STDIN);
 if (isset($input['purge_before'])) {
-  $retention = new EventRetention($database);
+  $retention = new EventRetention($database, new NullLockBackend());
   fwrite(STDOUT, (string) $retention->purgeBefore($input['purge_before']));
   exit(0);
 }
