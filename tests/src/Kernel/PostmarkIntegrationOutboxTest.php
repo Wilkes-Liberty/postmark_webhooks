@@ -197,7 +197,7 @@ class PostmarkIntegrationOutboxTest extends KernelTestBase {
   }
 
   /**
-   * Unsupported versions and invalid JSON fail once and are not retried.
+   * Unsupported versions, invalid JSON, and incomplete payloads fail once.
    */
   public function testPoisonPayloadFailsWithoutRetry(): void {
     $now = $this->container->get('datetime.time')->getCurrentTime();
@@ -236,8 +236,27 @@ class PostmarkIntegrationOutboxTest extends KernelTestBase {
       'delivered_at' => 0,
       'last_error' => '',
     ])->execute();
+    $database->insert('postmark_integration_outbox')->fields([
+      'fingerprint' => str_repeat('e', 64),
+      'type' => IntegrationEvent::WEBHOOK_ACCEPTED,
+      'version' => 1,
+      'payload' => json_encode([
+        'type' => IntegrationEvent::WEBHOOK_ACCEPTED,
+        'version' => 1,
+        'eventKey' => str_repeat('f', 64),
+        'source' => ['serverId' => '1', 'messageStream' => 'outbound'],
+        'occurred' => $now,
+        'timeBasis' => 'provider',
+      ], JSON_THROW_ON_ERROR),
+      'status' => 'pending',
+      'attempts' => 0,
+      'available_at' => $now,
+      'created' => $now,
+      'delivered_at' => 0,
+      'last_error' => '',
+    ])->execute();
     $result = $this->container->get('postmark_webhooks.integration_outbox')->dispatch();
-    $this->assertSame(2, $result['failed']);
+    $this->assertSame(3, $result['failed']);
     $this->assertSame(0, $result['delivered']);
     foreach ($this->container->get('postmark_webhooks.integration_outbox')->inspect() as $row) {
       $this->assertSame('failed', $row['status']);

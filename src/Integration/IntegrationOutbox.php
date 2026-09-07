@@ -249,20 +249,30 @@ final class IntegrationOutbox {
     catch (\JsonException $exception) {
       throw new \InvalidArgumentException('Stored integration payload is invalid.');
     }
-    if (!is_array($data) || !is_array($data['source'] ?? NULL)) {
+    if (!is_array($data) || !is_array($data['source'] ?? NULL)
+      || !is_string($data['type'] ?? NULL)
+      || !is_string($data['eventKey'] ?? NULL)
+      || !is_string($data['timeBasis'] ?? NULL)
+      || !is_string($data['recipient'] ?? NULL)
+      || !is_int($data['occurred'] ?? NULL)) {
       throw new \InvalidArgumentException('Stored integration payload is invalid.');
     }
     if (($data['version'] ?? NULL) !== IntegrationEvent::VERSION) {
       throw new \InvalidArgumentException('Unsupported integration event version.');
     }
+    $server_id = $data['source']['serverId'] ?? '';
+    $message_stream = $data['source']['messageStream'] ?? '';
+    if (!is_string($server_id) || !is_string($message_stream)) {
+      throw new \InvalidArgumentException('Stored integration payload is invalid.');
+    }
     return new IntegrationEvent(
-      (string) $data['type'],
-      (string) $data['eventKey'],
-      (string) ($data['source']['serverId'] ?? ''),
-      (string) ($data['source']['messageStream'] ?? ''),
-      (int) $data['occurred'],
-      (string) $data['timeBasis'],
-      (string) $data['recipient'],
+      $data['type'],
+      $data['eventKey'],
+      $server_id,
+      $message_stream,
+      $data['occurred'],
+      $data['timeBasis'],
+      $data['recipient'],
       isset($data['reason']) && is_string($data['reason']) ? $data['reason'] : NULL,
       array_key_exists('suppressed', $data) && is_bool($data['suppressed']) ? $data['suppressed'] : NULL,
     );
