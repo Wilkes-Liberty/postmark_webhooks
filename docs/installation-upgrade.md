@@ -61,7 +61,7 @@ drush updatedb -y
 drush cache:rebuild
 ```
 
-Fresh 1.0.0 installs that already completed `updatedb` have the integration
+Sites that installed 1.0.0 as a new enable already have the integration
 outbox table from `hook_schema()` and do not need a schema change.
 
 ## Upgrading from 1.0.0-alpha2
