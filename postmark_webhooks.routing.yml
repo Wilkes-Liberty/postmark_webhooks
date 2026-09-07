@@ -44,6 +44,17 @@ postmark_webhooks.inspector:
     _admin_route: TRUE
     no_cache: TRUE
 
+postmark_webhooks.event_timeline:
+  path: '/admin/reports/postmark-timeline'
+  defaults:
+    _form: '\Drupal\postmark_webhooks\Form\EventTimelineForm'
+    _title: 'Postmark message timeline'
+  requirements:
+    _permission: 'view postmark suppression'
+  options:
+    _admin_route: TRUE
+    no_cache: TRUE
+
 postmark_webhooks.recover:
   path: '/admin/reports/postmark-suppression/recover/{state_key}'
   defaults:

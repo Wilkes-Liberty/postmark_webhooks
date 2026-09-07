@@ -368,6 +368,22 @@ action, target evidence key and a keyed recipient reference; it stores no raw
 mailbox or free-text notes. These references are pseudonymous, not anonymous.
 Audit records are retained independently of event-history cleanup.
 
+## Message delivery timeline
+
+The Reports menu also includes a MessageID timeline at
+`/admin/reports/postmark-timeline`. The same `view postmark suppression`
+permission is required. Submit an exact MessageID in the form, optionally
+narrowed by event type, source and UTC date range. Identifiers are not placed
+in lookup URLs or logs. Results are paginated in groups of 25, ordered by
+provider occurrence then receipt time, and keep message identity distinct from
+event identity.
+
+The view uses retained local events only. It is not a complete provider
+archive. Empty results may mean the identifier is wrong, history was purged, or
+the message predates installation. Delivery rows are provider evidence, not
+proof of inbox placement, and do not override suppression. Raw payloads and
+legacy descriptions are omitted.
+
 ## Policy preview and diagnostics
 
 The settings page links to a read-only policy preview. Select the real mail path

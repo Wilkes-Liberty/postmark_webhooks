@@ -1,7 +1,8 @@
 # 1.x public API compatibility contract
 
 Issue #3621229. This is the supported extension surface for 1.x. Storage tables,
-webhook intake internals and operator forms are not a compatibility promise.
+webhook intake internals and operator forms, including the MessageID timeline,
+are not a compatibility promise.
 
 ## Public PHP types
 

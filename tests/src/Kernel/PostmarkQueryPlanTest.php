@@ -36,11 +36,15 @@ class PostmarkQueryPlanTest extends KernelTestBase {
       'postmark_intake_metrics',
     ]);
     $database = $this->container->get('database');
-    $insert = $database->insert('postmark_events')->fields(['created', 'recipient']);
+    $insert = $database->insert('postmark_events')->fields(['created', 'recipient', 'message_id']);
     for ($i = 0; $i < self::HISTORY_ROWS; $i++) {
       // Expired rows are a minority so created < cutoff can use the index
       // instead of scanning the whole table.
-      $insert->values([$i < 400 ? $i : 1000 + $i, 'history' . ($i % 50) . '@example.com']);
+      $insert->values([
+        $i < 400 ? $i : 1000 + $i,
+        'history' . ($i % 50) . '@example.com',
+        'msg-' . ($i % 100),
+      ]);
     }
     $insert->execute();
     $states = $database->insert('postmark_suppression')->fields([
@@ -78,8 +82,17 @@ class PostmarkQueryPlanTest extends KernelTestBase {
       ->fields('ps')
       ->condition('recipient', 'lookup25@example.com');
 
+    $timeline = $database->select('postmark_events', 'pe')
+      ->fields('pe', ['eid', 'occurred', 'created'])
+      ->condition('message_id', 'msg-25')
+      ->orderBy('occurred')
+      ->orderBy('created')
+      ->orderBy('eid')
+      ->range(0, 25);
+
     $this->assertIndexAccess($this->explain($cleanup), 'created', 'cleanup');
     $this->assertIndexAccess($this->explain($lookup), 'recipient', 'lookup');
+    $this->assertIndexAccess($this->explain($timeline), 'message_id', 'timeline');
   }
 
   /**
