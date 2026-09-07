@@ -106,11 +106,18 @@ Configure suppression and retention at
 `/admin/config/services/postmark-webhook`. The required permission is
 `administer postmark webhook settings`.
 
+## Upgrading from 1.0.1
+
+Back up the database, `composer require drupal/postmark_webhooks:^1.0`, then
+run `drush cache:rebuild`. There is no new update hook. Enable
+`drupal/audit_chain` separately if you want the optional operator-audit
+dual-write.
+
 ## Upgrading from 1.0.0
 
 Back up the database, `composer require drupal/postmark_webhooks:^1.0`, then
 run `drush updatedb -y` and `drush cache:rebuild`. Drupal 11 sites that
-failed update 10007 on 1.0.0 can complete that update on 1.0.1.
+failed update 10007 on 1.0.0 can complete that update on 1.0.1 or later.
 
 ## Upgrading from 1.0.0-alpha2
 

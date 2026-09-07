@@ -7,7 +7,7 @@
 <li>Checks every To, Cc and Bcc recipient before core mail transport. An optional Mailer Plus adapter covers native and compatibility mail pipelines.</li>
 <li>Consent-aware SubscriptionChange processing and audited, source-specific hard-bounce recovery.</li>
 <li>Protected inspection, no-send policy previews, structured Drush diagnostics, health evaluation and intake counters.</li>
-<li>Permission-controlled recipient export, confirmed bounded history erasure, and an optional MessageID timeline. Minimal suppression and audit evidence remain.</li>
+<li>Permission-controlled recipient export, confirmed bounded history erasure, and an optional MessageID timeline. Minimal suppression and audit evidence remain. When <a href="https://www.drupal.org/project/audit_chain">audit_chain</a> is installed, operator export, erasure and hard-bounce recovery are also appended to that chain (hashed subject, uid and optional target only). Webhook intake is not written to the chain.</li>
 <li>Optional read-only Postmark reconciliation: review differences, then apply local imports in resumable batches. No provider writes or automatic reactivation.</li>
 </ul>
 <h3>Installation and configuration</h3>
@@ -16,15 +16,16 @@
 <p>Visit <code>/admin/config/services/postmark-webhook</code> for the routed endpoint, suppression settings and diagnostics. Configure Postmark to send webhooks to that HTTPS endpoint with HTTP Basic Auth, username <code>postmark</code> and the configured password. Preserve the Authorization header through proxies. The endpoint returns 503 without a configured password and 401 for missing or incorrect credentials. Secrets never appear in exported configuration or the settings page.</p>
 <p>HardBounce, BadEmailAddress, ManuallyDeactivated and Unsubscribe suppress without a time window. Transient and soft-bounce types use a configurable window, defaulting to 30 days. Complaints have no time limit by default. History retention defaults to 90 days and no longer removes durable suppression. Source policies are optional; existing sites retain the site-wide default.</p>
 <h3>Requirements and optional integrations</h3>
-<p>PHP 8.3 or later and Drupal 10.3 or 11. PostgreSQL 16 is the default CI database; MySQL 8.4, MariaDB 10.11 and SQLite are also verified. The optional Postmark Webhooks Mailer adapter is tested with Mailer Plus 1.6.2 and 2.0.2. The receiver needs no API token; the optional reconciliation module reads server tokens from settings.</p>
+<p>PHP 8.3 or later and Drupal 10.3 or 11. PostgreSQL 16 is the default CI database; MySQL 8.4, MariaDB 10.11 and SQLite are also verified. The optional Postmark Webhooks Mailer adapter is tested with Mailer Plus 1.6.2 and 2.0.2. The receiver needs no API token; the optional reconciliation module reads server tokens from settings. Optional <a href="https://www.drupal.org/project/audit_chain">audit_chain</a> dual-write of operator audits is a Composer <code>suggest</code>; there is no hard dependency on Key or Encrypt.</p>
 <h3>Upgrading</h3>
-<p>From 1.0.0, back up the database, run <code>composer require 'drupal/postmark_webhooks:^1.0'</code>, then <code>drush updatedb -y</code> and <code>drush cache:rebuild</code>. Drupal 11 sites that failed update 10007 on 1.0.0 can complete that update on 1.0.1.</p>
+<p>From 1.0.1, require <code>^1.0</code> and run <code>drush cache:rebuild</code>. There is no new update hook. Enable audit_chain separately if you want the optional operator-audit dual-write.</p>
+<p>From 1.0.0, back up the database, run <code>composer require 'drupal/postmark_webhooks:^1.0'</code>, then <code>drush updatedb -y</code> and <code>drush cache:rebuild</code>. Drupal 11 sites that failed update 10007 on 1.0.0 can complete that update on 1.0.1 or later.</p>
 <p>From 1.0.0-alpha2, back up the database, require <code>^1.0</code>, then run <code>drush updatedb -y</code> and <code>drush cache:rebuild</code>. Update 10007 creates the empty integration outbox table. Optional health, source profiles, integration events, scheduled reconciliation, MessageID timeline and extra retention draining stay off until configured.</p>
 <p>From 1.0.0-alpha1, run every update through 10007, including restartable 250-row batches. Updates preserve retained events, backfill suppression state and remove legacy provider free text. Previously discarded history cannot be recovered locally. Review suppression policy before resuming mail; optional submodules must be enabled separately. There is no supported downgrade.</p>
 <h3>Limits</h3>
 <ul>
 <li>Direct Symfony transports and custom recipient changes after the supported adapter boundary are outside its coverage.</li>
-<li>Erasing event history retains minimal suppression and audit evidence. Backups, provider records and downloaded exports require their own handling.</li>
+<li>Erasing event history retains minimal suppression and audit evidence. Backups, provider records and downloaded exports require their own handling. Optional audit_chain dual-write is fail-open and never receives a mailbox.</li>
 <li>Reconciliation reads bounded, date-filtered suppression dumps; oversized dumps require a separately reviewed migration. It does not import complete delivery history or clear consent because a record is absent.</li>
 <li>This module does not send mail or parse inbound email. Named source profiles are optional; the shared webhook secret remains the default.</li>
 </ul>
