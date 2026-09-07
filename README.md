@@ -8,8 +8,9 @@ mail backend that uses Drupal's mail manager.
 Requires PHP 8.3 or later and Drupal 10.3 or 11. The module appears in the
 **Chronicle** package group on the Extend page.
 
-Installation, alpha1 upgrades, interruption recovery and restore-based rollback
-are in [docs/installation-upgrade.md](docs/installation-upgrade.md).
+Installation, alpha1 and alpha2 upgrades, interruption recovery and
+restore-based rollback are in
+[docs/installation-upgrade.md](docs/installation-upgrade.md).
 
 ## Installation and configuration
 
