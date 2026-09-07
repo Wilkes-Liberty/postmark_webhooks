@@ -9,7 +9,7 @@
 <li>Optional Mailer Plus adapter and optional read-only provider reconciliation. Listed in the Chronicle package group on Drupal's Extend page.</li>
 </ul>
 <h3 id="module-project--post-installation">Post-installation</h3>
-<p>Install with <code>composer require drupal/postmark_webhooks:^1.0@alpha</code> and enable Postmark Webhooks. Put the secret in settings.php, not exported configuration:</p>
+<p>Install with <code>composer require drupal/postmark_webhooks:^1.0</code> and enable Postmark Webhooks. Put the secret in settings.php, not exported configuration:</p>
 <pre><code>$settings['postmark_webhooks.webhook_secret'] = getenv('POSTMARK_WEBHOOK_SECRET') ?: '';</code></pre>
 <p>In your Postmark server's message stream, configure bounce, spam complaint and delivery webhooks using <code>https://postmark:URL_ENCODED_SECRET@example.com/api/webhooks/postmark</code>. Replace the example host and encoded password. Postmark sends the password through HTTP Basic Auth; the admin UI never displays it.</p>
 <p>Use HTTPS and an edge IP allowlist using <a href="https://postmarkapp.com/support/article/800-ips-for-firewalls#webhooks">Postmark's current webhook IP addresses</a>. Preserve the Authorization header through proxies. Postmark does not provide X-Postmark-Signature or HMAC signatures; see its <a href="https://postmarkapp.com/developer/webhooks/webhooks-overview">webhook documentation</a>.</p>
@@ -24,7 +24,7 @@
 <li>Direct Symfony Mailer transports that do not use Drupal Mailer Plus or hook_mail_alter are not suppressed unless callers use the shared policy. Enable the optional Mailer Plus adapter when sending through Mailer Plus.</li>
 <li>Event retention and recipient-history erasure do not delete durable suppression and do not restore consent. Deleting history is not a reactivation.</li>
 <li>This is not an inbound email parser. Optional reconciliation is GET-only and does not change Postmark's suppression list.</li>
-<li>Separate webhook credentials per source are not implemented.</li>
+<li>Named source profiles in settings.php are optional. The shared webhook secret remains the default.</li>
 </ul>
 <h3 id="module-project--support">Supporting organizations</h3>
 <p>Maintained by Jeremy Michael Cerda. Development sponsored by <a href="https://www.drupal.org/wilkes-liberty">Wilkes &amp; Liberty, LLC</a>. Licensed under GPL-2.0-or-later.</p>

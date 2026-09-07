@@ -1,8 +1,8 @@
 # Installation, upgrades and rollback
 
 Issue #3621228. Operator steps for a fresh install and for upgrading a 1.0.0-alpha1
-site. This is not a stable-release advertisement: install the current alpha with
-`composer require drupal/postmark_webhooks:^1.0@alpha` until a 1.0.0 tag exists.
+site. Install the stable package with
+`composer require drupal/postmark_webhooks:^1.0`.
 
 The Drupal.org archive is the package under test. Git checkout CI is recorded in
 [integration-verification.md](integration-verification.md) and
@@ -15,7 +15,7 @@ The Drupal.org archive is the package under test. Git checkout CI is recorded in
 2. Require the published package and enable it:
 
    ```sh
-   composer require drupal/postmark_webhooks:^1.0@alpha
+   composer require drupal/postmark_webhooks:^1.0
    drush en postmark_webhooks -y
    drush cache:rebuild
    ```
@@ -49,14 +49,28 @@ rollback set is:
 Keep the dump off shared logs. Restoring only code or only the database can skip
 or re-run updates.
 
+## Upgrading from 1.0.0-alpha2
+
+Alpha2 sites run update 10007, which creates the empty integration outbox
+table. Enable optional features only after `updatedb` finishes.
+
+```sh
+composer require drupal/postmark_webhooks:^1.0
+drush updatedb -y
+drush cache:rebuild
+```
+
+Sites that already enabled `postmark_webhooks_reconcile` also run that
+submodule's update 10001 for drift-report storage.
+
 ## Upgrading from 1.0.0-alpha1
 
-Alpha1 sites must run every `hook_update_N` through 10006. Schema-only updates
+Alpha1 sites must run every `hook_update_N` through 10007. Schema-only updates
 are idempotent. Batched updates 10002 and 10006 process 250 rows per batch and
 resume from the last processed event id.
 
 ```sh
-composer require drupal/postmark_webhooks:^1.0@alpha
+composer require drupal/postmark_webhooks:^1.0
 drush updatedb -y
 drush cache:rebuild
 ```
@@ -73,6 +87,7 @@ schema onto old code.
 | 10004 | Creates empty intake counters; it does not rebuild past totals. |
 | 10005 | Creates the operator audit table. |
 | 10006 | Clears legacy `description` text and `payload` bodies in 250-row batches. Normalized history and suppression stay. |
+| 10007 | Creates the empty integration outbox table used when integration events are enabled. |
 
 History already discarded by alpha1 retention cannot be reconstructed locally.
 A replay of a legacy event can add one new keyed row because alpha1 did not keep
@@ -156,7 +171,7 @@ Recipient export streams 250-row pages and is audited. Protect the download.
 
 `tests/fixtures/verify-installation-docs.sh` follows these commands on
 disposable SQLite sites under `/tmp/postmark-*`. It Composer-requires the
-published `^1.0@alpha` package, enables the module, rebuilds caches and checks
+published `^1.0` package, enables the module, rebuilds caches and checks
 diagnostics, then repeats from 1.0.0-alpha1 through `drush updatedb`. Do not
 point it at production. It prints no secrets.
 
