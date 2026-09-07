@@ -131,7 +131,12 @@ final class EventTimeline {
       throw new \InvalidArgumentException('Provide both source fields or leave both blank.');
     }
     if ($server !== '') {
-      new SourceContext($server, $stream);
+      try {
+        new SourceContext($server, $stream);
+      }
+      catch (\InvalidArgumentException) {
+        throw new \InvalidArgumentException('Enter a numeric server ID of at most 20 digits and a non-empty message stream of at most 255 characters.');
+      }
     }
     $from = $filters['occurred_from'] ?? NULL;
     $to = $filters['occurred_to'] ?? NULL;

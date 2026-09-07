@@ -110,6 +110,18 @@ class PostmarkEventTimelineTest extends KernelTestBase {
   }
 
   /**
+   * Invalid source values return an actionable operator error.
+   */
+  public function testInvalidSourceMessage(): void {
+    $this->expectException(\InvalidArgumentException::class);
+    $this->expectExceptionMessage('numeric server ID');
+    $this->container->get('postmark_webhooks.event_timeline')->lookup('msg-1', [
+      'server_id' => 'abc',
+      'message_stream' => 'outbound',
+    ], $this->actor(['view postmark suppression']), 0);
+  }
+
+  /**
    * Inserts one retained event for timeline tests.
    */
   private function seed(
