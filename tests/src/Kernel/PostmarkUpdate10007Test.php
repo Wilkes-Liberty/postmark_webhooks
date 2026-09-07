@@ -39,7 +39,8 @@ class PostmarkUpdate10007Test extends KernelTestBase {
   public function testUpdateCreatesOutboxTable(): void {
     $schema = $this->container->get('database')->schema();
     $this->assertFalse($schema->tableExists('postmark_integration_outbox'));
-    $this->container->get('module_handler')->loadInclude('postmark_webhooks', 'install');
+    $this->container->get('module_handler')
+      ->loadInclude('postmark_webhooks', 'install');
     postmark_webhooks_update_10007();
     $this->assertTrue($schema->tableExists('postmark_integration_outbox'));
     postmark_webhooks_update_10007();

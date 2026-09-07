@@ -251,12 +251,14 @@ class ReconciliationTest extends KernelTestBase {
   }
 
   /**
-   * Existing reconciliation sites get drift-report storage without the removed helper.
+   * Existing reconciliation sites get drift-report storage without the
+   * removed helper.
    */
   public function testUpdateCreatesDriftReportTable(): void {
     $schema = $this->container->get('database')->schema();
     $this->assertFalse($schema->tableExists('postmark_drift_report'));
-    $this->container->get('module_handler')->loadInclude('postmark_webhooks_reconcile', 'install');
+    $this->container->get('module_handler')
+      ->loadInclude('postmark_webhooks_reconcile', 'install');
     postmark_webhooks_reconcile_update_10001();
     $this->assertTrue($schema->tableExists('postmark_drift_report'));
     postmark_webhooks_reconcile_update_10001();
