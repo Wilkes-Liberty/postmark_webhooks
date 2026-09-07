@@ -1,7 +1,7 @@
 # Installation, upgrades and rollback
 
-Issue #3621228. Operator steps for a fresh install and for upgrading a 1.0.0-alpha1
-site. Install the stable package with
+Issue #3621228. Operator steps for a fresh install and for upgrading from
+1.0.0-alpha1 or 1.0.0-alpha2. Install the stable package with
 `composer require drupal/postmark_webhooks:^1.0`.
 
 The Drupal.org archive is the package under test. Git checkout CI is recorded in
