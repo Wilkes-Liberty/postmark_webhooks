@@ -221,7 +221,9 @@ final class IntegrationOutbox {
    * Bounded exponential backoff in seconds.
    */
   private function backoff(int $attempts): int {
-    return min(3600, 60 * (2 ** max(0, $attempts - 1)));
+    // Cap the exponent so 2 ** n cannot overflow a 32-bit int before min().
+    $exponent = min(6, max(0, $attempts - 1));
+    return min(3600, 60 * (2 ** $exponent));
   }
 
   /**
@@ -271,7 +273,7 @@ final class IntegrationOutbox {
    */
   private function safeError(\Throwable $exception): string {
     $message = $exception->getMessage();
-    $message = preg_replace('/[^\s]{0,64}@[\w.-]+/', '[redacted]', $message) ?? '[redacted]';
+    $message = preg_replace('/[^\s]{1,64}@[\w.-]+/', '[redacted]', $message) ?? '[redacted]';
     return mb_substr($message, 0, 255);
   }
 
@@ -285,6 +287,7 @@ final class IntegrationOutbox {
       ]);
     }
     catch (\Throwable $exception) {
+      // Logging failure must not abort delivery accounting.
     }
   }
 

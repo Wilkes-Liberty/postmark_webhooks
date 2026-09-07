@@ -13,7 +13,9 @@ use Drupal\postmark_webhooks\Integration\IntegrationEvent;
 function postmark_integration_test_postmark_webhooks_integration_event(IntegrationEvent $event): void {
   $state = \Drupal::state();
   if ($state->get('postmark_integration_test.throw')) {
-    throw new \RuntimeException('Synthetic integration delivery failure.');
+    throw new \RuntimeException(
+      'Synthetic delivery failure at @state for recipient0@example.com.',
+    );
   }
   $seen = $state->get('postmark_integration_test.events', []);
   $seen[] = $event->jsonSerialize();
