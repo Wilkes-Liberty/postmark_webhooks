@@ -224,7 +224,12 @@ reason, evidence digest and occurrence/time basis in `postmark_suppression`
 that are needed to prevent unwanted mail. Operator audit records are also
 retained: action, target, HMAC subject, uid and time, with no raw mailbox or
 free-text notes. Those references are pseudonymous, not anonymous, and survive
-event-history cleanup.
+event-history cleanup. When
+[audit_chain](https://www.drupal.org/project/audit_chain) is installed, the
+same operator actions are also appended to channel `postmark_webhooks`
+(hashed subject, uid and optional target only). A chain write failure is
+logged and does not undo the local row. Webhook intake is not written to the
+chain. `composer suggest` lists the optional package.
 
 Operators must account separately for backups, provider records, exports and
 site-specific retention policy; this control does not claim irreversible erasure

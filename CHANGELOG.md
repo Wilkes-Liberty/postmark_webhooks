@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- #3621495: Dual-write operator audits to audit_chain when it is installed.
+  Fail open. Keep the local table. Never send a mailbox.
+
 ## [1.0.1] - 2026-09-07
 
 - #3621301: Create the integration outbox and drift-report tables from hook_schema() during updates. Drupal 11 removed drupal_get_module_schema(), which caused updatedb to fail.
