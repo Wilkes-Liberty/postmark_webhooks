@@ -52,11 +52,14 @@ final class SuppressionStore {
 
   /**
    * Records evidence without allowing delayed events to overwrite newer state.
+   *
+   * @return bool
+   *   TRUE when a row was inserted or newer evidence replaced older state.
    */
-  public function record(array $event): void {
+  public function record(array $event): bool {
     $reason = self::reason($event);
     if ($reason === NULL) {
-      return;
+      return FALSE;
     }
     $recipient = mb_strtolower(trim($event['recipient']));
     $server = $event['server_id'] ?? '';
@@ -75,9 +78,12 @@ final class SuppressionStore {
     $transaction = $this->database->startTransaction();
     try {
       $this->database->insert('postmark_suppression')->fields($row)->execute();
+      unset($transaction);
+      return TRUE;
     }
     catch (IntegrityConstraintViolationException $exception) {
       $transaction->rollBack();
+      unset($transaction);
       if (!$this->database->select('postmark_suppression')->condition('state_key', $key)->countQuery()->execute()->fetchField()) {
         throw $exception;
       }
@@ -85,17 +91,17 @@ final class SuppressionStore {
       $newer = $update->orConditionGroup()
         ->condition('occurred', $row['occurred'], '<')
         ->condition($update->andConditionGroup()->condition('occurred', $row['occurred'])->condition('evidence', $row['evidence'], '<'));
-      $update->fields([
+      $affected = $update->fields([
         'occurred' => $row['occurred'],
         'time_basis' => $row['time_basis'],
         'evidence' => $row['evidence'],
       ])->condition('state_key', $key)->condition($newer)->execute();
+      return $affected > 0;
     }
     catch (\Throwable $exception) {
       $transaction->rollBack();
       throw $exception;
     }
-    unset($transaction);
   }
 
 }

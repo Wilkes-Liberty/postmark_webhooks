@@ -359,7 +359,11 @@ accepted, duplicate and authenticated-rejection counts with last-seen timestamps
 Configurable health checks, status-report output and optional hook-based alerts
 are in [docs/health.md](docs/health.md). `drush postmark-webhooks:health`
 prints the machine-readable report. This module does not send those alerts as
-mail. Quiet sites stay unknown unless you set an expected activity window.
+mail. Opt-in post-commit integration events are in
+[docs/integration-events.md](docs/integration-events.md).
+`drush postmark-webhooks:outbox` lists inspectable delivery rows without
+recipients. `drush postmark-webhooks:outbox-dispatch` delivers one bounded
+page, the same tick cron uses. Quiet sites stay unknown unless you set an expected activity window.
 The counters begin at installation of update 10004; they do not reconstruct past
 traffic. Successful event storage and its accepted counter commit together.
 Counters survive history retention and contain no mailbox, message or secret
@@ -497,8 +501,9 @@ See [docs/integration-verification.md](docs/integration-verification.md),
 [docs/published-package-verification.md](docs/published-package-verification.md),
 [docs/installation-upgrade.md](docs/installation-upgrade.md),
 [docs/public-api.md](docs/public-api.md),
-[docs/health.md](docs/health.md) and
-[docs/reconciliation.md](docs/reconciliation.md).
+[docs/health.md](docs/health.md),
+[docs/reconciliation.md](docs/reconciliation.md) and
+[docs/integration-events.md](docs/integration-events.md).
 
 HTTP coverage includes settings permissions, secret exclusion, Basic Auth and
 retry handling through the real route. Routing-context tests cover root,

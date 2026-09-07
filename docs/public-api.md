@@ -10,6 +10,7 @@ webhook intake internals and operator forms are not a compatibility promise.
 | `Drupal\postmark_webhooks\Suppression\SuppressionPolicyInterface` | `decide()` before transport |
 | `Drupal\postmark_webhooks\Suppression\SuppressionDecision` | Immutable result |
 | `Drupal\postmark_webhooks\Source\SourceContext` | Trusted sending server/stream |
+| `Drupal\postmark_webhooks\Integration\IntegrationEvent` | Opt-in post-commit webhook and suppression notification |
 
 Inject the interface, not the implementation class. Service ID
 `postmark_webhooks.suppression_policy` and the interface class name are aliases

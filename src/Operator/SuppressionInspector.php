@@ -10,6 +10,8 @@ use Drupal\Core\Database\Connection;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\postmark_webhooks\Source\SourceContext;
 use Drupal\postmark_webhooks\Suppression\SuppressionPolicyInterface;
+use Drupal\postmark_webhooks\Integration\IntegrationEvent;
+use Drupal\postmark_webhooks\Integration\IntegrationOutbox;
 use Drupal\postmark_webhooks\Suppression\SuppressionStore;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -28,6 +30,7 @@ final class SuppressionInspector {
     private readonly OperatorAudit $audit,
     private readonly EmailValidatorInterface $emailValidator,
     private readonly TimeInterface $time,
+    private readonly IntegrationOutbox $outbox,
   ) {}
 
   /**
@@ -86,7 +89,7 @@ final class SuppressionInspector {
         throw new \InvalidArgumentException('Evidence changed. Inspect and confirm again.');
       }
       $now = $this->time->getCurrentTime();
-      $this->store->record([
+      $release = [
         'event_type' => 'SubscriptionChange',
         'suppress_sending' => 0,
         'recipient' => $row->recipient,
@@ -96,7 +99,10 @@ final class SuppressionInspector {
         'created' => $now,
         'time_basis' => 'receipt',
         'event_key' => hash('sha256', random_bytes(32)),
-      ]);
+      ];
+      if ($this->store->record($release) && $this->outbox->shouldEnqueue()) {
+        $this->outbox->enqueue(IntegrationEvent::fromAccepted($release, TRUE));
+      }
       $this->audit->record('recover_hard', $row->recipient, $actor, $now, $key);
     }
     catch (\Throwable $exception) {

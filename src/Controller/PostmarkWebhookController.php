@@ -10,6 +10,8 @@ use Drupal\postmark_webhooks\Event\EventIdentity;
 use Drupal\postmark_webhooks\Source\SourcePolicy;
 use Drupal\postmark_webhooks\Event\WebhookPayload;
 use Drupal\postmark_webhooks\Event\EventTime;
+use Drupal\postmark_webhooks\Integration\IntegrationEvent;
+use Drupal\postmark_webhooks\Integration\IntegrationOutbox;
 use Drupal\postmark_webhooks\Suppression\SuppressionStore;
 use Drupal\Component\Datetime\TimeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -41,13 +43,14 @@ class PostmarkWebhookController extends ControllerBase {
     protected TimeInterface $time,
     protected SuppressionStore $suppressionStore,
     protected IntakeMetrics $metrics,
+    protected ?IntegrationOutbox $outbox = NULL,
   ) {}
 
   /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    return new static($container->get('database'), $container->get('datetime.time'), $container->get('postmark_webhooks.suppression_store'), $container->get('postmark_webhooks.intake_metrics'));
+    return new static($container->get('database'), $container->get('datetime.time'), $container->get('postmark_webhooks.suppression_store'), $container->get('postmark_webhooks.intake_metrics'), $container->get('postmark_webhooks.integration_outbox'));
   }
 
   /**
@@ -127,8 +130,14 @@ class PostmarkWebhookController extends ControllerBase {
         $event['origin'] = $data['Origin'];
       }
       $database->insert('postmark_events')->fields($event)->execute();
-      $this->suppressionStore->record($event);
+      $changed = $this->suppressionStore->record($event);
       $this->metrics->record('accepted', $this->time->getCurrentTime());
+      if ($this->outbox?->shouldEnqueue()) {
+        $this->outbox->enqueue(IntegrationEvent::fromAccepted($event, FALSE));
+        if ($changed) {
+          $this->outbox->enqueue(IntegrationEvent::fromAccepted($event, TRUE));
+        }
+      }
     }
     catch (IntegrityConstraintViolationException $exception) {
       $transaction->rollBack();

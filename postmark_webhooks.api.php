@@ -38,3 +38,17 @@ function hook_postmark_webhooks_provider_health(): array {
 function hook_postmark_webhooks_drift_report(array $report): void {
   // Forward to an existing notifier. Never log recipients or secrets.
 }
+
+/**
+ * Reacts to a committed webhook or suppression change.
+ *
+ * Delivery is at-least-once. Use eventKey and type for idempotency. Do not
+ * throw unless delivery should retry. Throwing must not be used to undo
+ * accepted suppression. This module does not send mail.
+ *
+ * @param \Drupal\postmark_webhooks\Integration\IntegrationEvent $event
+ *   Typed v1 event. Recipients are for the subscriber, not for logs.
+ */
+function hook_postmark_webhooks_integration_event(\Drupal\postmark_webhooks\Integration\IntegrationEvent $event): void {
+  // Forward to a workflow. Treat eventKey + type as the idempotency key.
+}

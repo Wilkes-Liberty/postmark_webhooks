@@ -7,3 +7,7 @@ health_expected_activity_seconds: 0
 health_retention_backlog_warning: 250
 health_rotation_warning_seconds: 86400
 health_alert_cooldown_seconds: 3600
+integration_events_enabled: false
+integration_events_batch: 25
+integration_events_retention_seconds: 604800
+integration_events_max_attempts: 8
