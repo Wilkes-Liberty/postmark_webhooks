@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- #3621231: Add optional named source profiles in settings.php that bind independently rotated webhook credentials to server and stream pairs. Authenticate the credential first, then reject cross-profile payloads before storage. The shared secret remains the default; it is ignored while any profile is usable.
 - #3621232: Add an opt-in transactional outbox for typed integration events after accepted webhooks and suppression changes. Delivery is at-least-once after commit; subscriber failure does not undo suppression. Duplicate webhooks and rolled-back transactions create no extra notifications.
 - #3621233: Add opt-in scheduled read-only reconciliation previews and suppression drift reports. Cron scans completed UTC dates with per-source locks and resumable cursors, never applies imports, and does not infer consent from provider absence.
 - #3621230: Add configurable webhook health evaluation, status-report and Drush output, and optional hook-based alerts that do not send mail. Quiet sites stay unknown unless an activity window is configured.

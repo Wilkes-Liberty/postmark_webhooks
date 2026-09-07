@@ -12,7 +12,7 @@ send mail.
 | `rotation` | Previous secret absent, active, expiring, expired or invalid |
 | `intake_silence` | Last accepted intake versus an optional activity window |
 | `retention_backlog` | Whether expired event rows exceed a warning threshold |
-| `source_health` | Always unknown: counters have no source labels |
+| `source_health` | Always unknown: counters have no source labels, including when source profiles are configured |
 | `endpoint_reachability` | Always `unproven` from local counters |
 | `provider_delivery` | Optional hook; default `not_queried` |
 

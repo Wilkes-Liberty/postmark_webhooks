@@ -28,7 +28,8 @@ The Drupal.org archive is the package under test. Git checkout CI is recorded in
 
 4. Copy the webhook URL from `/admin/config/services/postmark-webhook` and add
    HTTP Basic Auth in the Postmark stream (username `postmark`, password equal to
-   the settings value). Use HTTPS.
+   the settings value). Use HTTPS. Multiple Postmark servers can use named
+   source profiles in `settings.php` instead of the shared secret; see README.
 5. Confirm `drush postmark-webhooks:diagnostics --format=json` reports a usable
    active secret without printing it. An empty secret makes the endpoint return
    503 and store nothing.

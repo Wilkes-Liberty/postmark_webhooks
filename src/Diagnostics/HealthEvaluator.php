@@ -162,6 +162,10 @@ final class HealthEvaluator {
    */
   private function sourceCheck(): array {
     $allowlist = Settings::get('postmark_webhooks.allowed_sources');
+    $profiles = Settings::get('postmark_webhooks.source_profiles');
+    if ($profiles !== NULL) {
+      return $this->check('source_health', 'unknown', 'aggregate_only', 'Source profiles are configured, but counters still have no source labels.');
+    }
     if ($allowlist === NULL) {
       return $this->check('source_health', 'unknown', 'shared_endpoint', 'Intake counters are site-wide and do not identify a source.');
     }

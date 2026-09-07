@@ -50,6 +50,35 @@ Neither credential is read from Drupal configuration or included in diagnostics.
 `WebhookCredentials::rotationStatus()` reports only absent, invalid, active or
 expired; it does not reveal values. Expiry is fixed, never extended by requests.
 
+Sites that receive webhooks from more than one Postmark server can bind each
+credential to server and stream pairs. Put named profiles in settings.php, not
+configuration:
+
+```php
+$settings['postmark_webhooks.source_profiles'] = [
+  'marketing' => [
+    'secret' => getenv('POSTMARK_WEBHOOK_SECRET_MARKETING') ?: '',
+    'previous' => [
+      'secret' => getenv('POSTMARK_WEBHOOK_PREVIOUS_SECRET_MARKETING') ?: '',
+      'expires' => 1790000000,
+    ],
+    'sources' => [
+      ['server_id' => '23', 'message_stream' => 'outbound'],
+    ],
+  ],
+];
+```
+
+Authenticate the profile credential first, then accept only that profile's
+sources. A payload for another profile's server is 403 and is not stored.
+`revoked => TRUE` rejects that profile immediately while keeping its bindings
+reserved. Duplicate secrets or duplicate server/stream bindings fail closed
+with 503. A source-less body is 403. While any profile is usable, the shared
+`webhook_secret` is not accepted. To migrate, copy the current secret into a
+named profile with the current allowlist as its sources, then remove the
+shared keys. After every profile is revoked, the shared secret is the
+fallback. Profile ids appear in diagnostics; secrets do not.
+
 In your Postmark server's message stream, configure bounce, spam complaint and
 delivery webhooks with this URL shape, replacing the example host and password:
 
