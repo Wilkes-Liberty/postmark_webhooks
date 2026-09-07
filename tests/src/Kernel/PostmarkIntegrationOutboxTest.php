@@ -42,7 +42,7 @@ class PostmarkIntegrationOutboxTest extends KernelTestBase {
       'postmark_integration_outbox',
     ]);
     $this->installConfig(['postmark_webhooks']);
-    new Settings(['postmark_webhooks.webhook_secret' => 's3cr3t-webhook-pass']);
+    new Settings(['postmark_webhooks.webhook_secret' => 's3cr3t-webhook-pass'] + Settings::getAll());
     $this->config('postmark_webhooks.settings')->set('integration_events_enabled', TRUE)->save();
   }
 
