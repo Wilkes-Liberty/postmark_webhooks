@@ -1,4 +1,5 @@
 .postmark-webhooks-operator {
+  max-width: 100%;
   overflow-wrap: anywhere;
 }
 
@@ -7,9 +8,27 @@
 .postmark-webhooks-operator textarea {
   box-sizing: border-box;
   max-width: 100%;
+  min-width: 0;
 }
 
 .postmark-webhooks-operator details,
-.postmark-webhooks-operator fieldset {
+.postmark-webhooks-operator fieldset,
+.postmark-webhooks-operator .form-item,
+.postmark-webhooks-operator .form-wrapper {
   min-inline-size: 0;
+  max-width: 100%;
+}
+
+.postmark-webhooks-operator__result:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+@media (max-width: 48rem) {
+  .postmark-webhooks-operator input[type="date"],
+  .postmark-webhooks-operator input[type="email"],
+  .postmark-webhooks-operator input[type="number"],
+  .postmark-webhooks-operator input[type="text"] {
+    width: 100%;
+  }
 }

@@ -16,6 +16,8 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
  */
 final class HardBounceRecoveryForm extends ConfirmFormBase {
 
+  use OperatorFormTrait;
+
   /**
    * Constructs the recovery form.
    */
@@ -66,9 +68,6 @@ final class HardBounceRecoveryForm extends ConfirmFormBase {
     catch (\InvalidArgumentException $exception) {
       throw new BadRequestHttpException($exception->getMessage());
     }
-    $form['#cache']['max-age'] = 0;
-    $form['#attributes']['class'][] = 'postmark-webhooks-operator';
-    $form['#attached']['library'][] = 'postmark_webhooks/operator';
     $form['subject'] = [
       '#type' => 'item',
       '#title' => $this->t('Recipient and source'),
@@ -78,7 +77,21 @@ final class HardBounceRecoveryForm extends ConfirmFormBase {
     // must not silently substitute different evidence in a pending form.
     $form['state_key'] = ['#type' => 'hidden', '#value' => $state_key];
     $form['evidence'] = ['#type' => 'hidden', '#default_value' => $row->evidence];
-    return parent::buildForm($form, $form_state);
+    $form = parent::buildForm($form, $form_state);
+    $this->operatorShell($form, 'postmark-webhooks-recovery-help');
+    $form['#attributes']['aria-describedby'] = 'postmark-webhooks-recovery-help';
+    $form['description'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'id' => 'postmark-webhooks-recovery-help',
+        'class' => ['postmark-webhooks-operator__help'],
+        'role' => 'note',
+      ],
+      'text' => ['#markup' => $this->getDescription()],
+    ];
+    $form['actions']['submit']['#button_type'] = 'danger';
+    $form['actions']['submit']['#attributes']['class'][] = 'button--danger';
+    return $form;
   }
 
   /**
@@ -86,7 +99,11 @@ final class HardBounceRecoveryForm extends ConfirmFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     try {
-      $this->inspector->recover($form_state->getValue('state_key'), $form_state->getValue('evidence'), $this->currentUser());
+      $this->inspector->recover(
+        $form_state->getValue('state_key'),
+        $form_state->getValue('evidence'),
+        $this->currentUser(),
+      );
       $this->messenger()->addStatus($this->t('Hard-bounce recovery recorded. Other suppression protections remain in force.'));
     }
     catch (\InvalidArgumentException $exception) {

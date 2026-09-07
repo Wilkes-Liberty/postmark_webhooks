@@ -15,6 +15,8 @@ use Symfony\Component\HttpFoundation\StreamedJsonResponse;
  */
 final class RecipientExportForm extends FormBase {
 
+  use OperatorFormTrait;
+
   /**
    * Constructs the export form.
    */
@@ -38,13 +40,21 @@ final class RecipientExportForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
-    $form['#cache']['max-age'] = 0;
-    $form['#attributes']['class'][] = 'postmark-webhooks-operator';
-    $form['#attached']['library'][] = 'postmark_webhooks/operator';
-    $form['explanation'] = ['#markup' => $this->t('Export normalized recipient history and minimal suppression evidence as JSON. Provider free text and raw payloads are excluded. This request is audited. Protect the downloaded file as recipient data.')];
-    $form['recipient'] = ['#type' => 'email', '#title' => $this->t('Recipient'), '#required' => TRUE];
+    $this->operatorShell(
+      $form,
+      'postmark-webhooks-export-help',
+      $this->t('Export normalized recipient history and minimal suppression evidence as JSON. Provider free text and raw payloads are excluded. This request is audited. Protect the downloaded file as recipient data. The browser download itself may not be announced.'),
+    );
+    $form['recipient'] = [
+      '#type' => 'email',
+      '#title' => $this->t('Recipient'),
+      '#required' => TRUE,
+    ];
     $form['actions']['#type'] = 'actions';
-    $form['actions']['submit'] = ['#type' => 'submit', '#value' => $this->t('Download recipient export')];
+    $form['actions']['submit'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Download recipient export'),
+    ];
     return $form;
   }
 

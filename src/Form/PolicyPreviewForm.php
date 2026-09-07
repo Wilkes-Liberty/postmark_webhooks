@@ -15,6 +15,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  */
 final class PolicyPreviewForm extends FormBase {
 
+  use OperatorFormTrait;
+
   /**
    * Constructs the preview form.
    */
@@ -38,13 +40,16 @@ final class PolicyPreviewForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
-    $form['#cache']['max-age'] = 0;
-    $form['#attributes']['class'][] = 'postmark-webhooks-operator';
-    $form['#attached']['library'][] = 'postmark_webhooks/operator';
-    $form['explanation'] = [
-      '#markup' => $this->t('This preview sends no mail and changes no suppression evidence. An allowed result does not guarantee provider acceptance or delivery.'),
+    $this->operatorShell(
+      $form,
+      'postmark-webhooks-preview-help',
+      $this->t('This preview sends no mail and changes no suppression evidence. An allowed result does not guarantee provider acceptance or delivery.'),
+    );
+    $form['recipient'] = [
+      '#type' => 'email',
+      '#title' => $this->t('Recipient'),
+      '#required' => TRUE,
     ];
-    $form['recipient'] = ['#type' => 'email', '#title' => $this->t('Recipient'), '#required' => TRUE];
     $form['mail_path'] = [
       '#type' => 'select',
       '#title' => $this->t('Mail path'),
@@ -54,7 +59,11 @@ final class PolicyPreviewForm extends FormBase {
         'direct_symfony' => $this->t('Direct Symfony transport'),
       ],
     ];
-    $form['server_id'] = ['#type' => 'textfield', '#title' => $this->t('Sending server ID'), '#maxlength' => 20];
+    $form['server_id'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Sending server ID'),
+      '#maxlength' => 20,
+    ];
     $form['message_stream'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Sending message stream'),
@@ -62,20 +71,44 @@ final class PolicyPreviewForm extends FormBase {
       '#description' => $this->t('Provide both source fields or leave both blank for conservative policy.'),
     ];
     $form['actions']['#type'] = 'actions';
-    $form['actions']['submit'] = ['#type' => 'submit', '#value' => $this->t('Preview policy')];
+    $form['actions']['submit'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Preview policy'),
+    ];
     if ($result = $form_state->get('preview')) {
-      $form['result'] = ['#type' => 'details', '#title' => $this->t('Preview result'), '#open' => TRUE];
-      $form['result']['effective'] = [
+      $form['result'] = $this->operatorResult(
+        'postmark-webhooks-preview-result',
+        $this->t('Preview result'),
+      );
+      $form['result']['panel'] = [
+        '#type' => 'details',
+        '#title' => $this->t('Preview result'),
+        '#open' => TRUE,
+      ];
+      if (!$result['enabled']) {
+        $effective = $this->t('Suppression is disabled.');
+      }
+      elseif (!$result['covered']) {
+        $effective = $this->t('This mail path is not protected by this module.');
+      }
+      elseif ($result['effective_block']) {
+        $effective = $this->t('This module would block the message.');
+      }
+      else {
+        $effective = $this->t('This module would allow the message.');
+      }
+      $form['result']['panel']['effective'] = [
         '#type' => 'item',
         '#title' => $this->t('Effective result'),
-        '#markup' => !$result['enabled'] ? $this->t('Suppression is disabled.') : (!$result['covered'] ? $this->t('This mail path is not protected by this module.') : ($result['effective_block'] ? $this->t('This module would block the message.') : $this->t('This module would allow the message.'))),
+        '#markup' => $effective,
+        '#wrapper_attributes' => ['role' => 'status'],
       ];
-      $form['result']['reason'] = [
+      $form['result']['panel']['reason'] = [
         '#type' => 'item',
         '#title' => $this->t('Policy reason'),
         '#plain_text' => $result['policy']['reason'],
       ];
-      $form['result']['expires'] = [
+      $form['result']['panel']['expires'] = [
         '#type' => 'item',
         '#title' => $this->t('Expiry'),
         '#plain_text' => $result['policy']['expires'] ? gmdate('Y-m-d H:i:s \U\T\C', $result['policy']['expires']) : (string) $this->t('No timed expiry'),
@@ -99,7 +132,11 @@ final class PolicyPreviewForm extends FormBase {
       return;
     }
     try {
-      $form_state->set('preview', $this->preview->preview($form_state->getValue('recipient'), $form_state->getValue('mail_path'), $source));
+      $form_state->set('preview', $this->preview->preview(
+        $form_state->getValue('recipient'),
+        $form_state->getValue('mail_path'),
+        $source,
+      ));
     }
     catch (\InvalidArgumentException $exception) {
       $form_state->setErrorByName('recipient', $this->t('Enter one valid recipient.'));

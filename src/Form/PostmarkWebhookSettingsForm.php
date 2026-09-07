@@ -13,6 +13,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  */
 class PostmarkWebhookSettingsForm extends ConfigFormBase {
 
+  use OperatorFormTrait;
+
   /**
    * Read-only effective diagnostics.
    */
@@ -47,9 +49,11 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $config = $this->config('postmark_webhooks.settings');
     $diagnostics = $this->preview->diagnostics();
-    $form['#cache']['max-age'] = 0;
-    $form['#attributes']['class'][] = 'postmark-webhooks-operator';
-    $form['#attached']['library'][] = 'postmark_webhooks/operator';
+    $this->operatorShell(
+      $form,
+      'postmark-webhooks-settings-help',
+      $this->t('Webhook secrets stay in settings.php. This form does not display or export them. Effective status is read-only.'),
+    );
     $form['diagnostics'] = ['#type' => 'details', '#title' => $this->t('Effective status'), '#open' => TRUE];
     $form['diagnostics']['secret'] = [
       '#type' => 'item',
