@@ -49,6 +49,21 @@ rollback set is:
 Keep the dump off shared logs. Restoring only code or only the database can skip
 or re-run updates.
 
+## Upgrading from 1.0.0
+
+Drupal 11 sites that failed update 10007 on 1.0.0 should install 1.0.1 and
+re-run `drush updatedb`. The update now reads table specifications from
+`hook_schema()` instead of the removed `drupal_get_module_schema()` helper.
+
+```sh
+composer require drupal/postmark_webhooks:^1.0
+drush updatedb -y
+drush cache:rebuild
+```
+
+Sites that installed 1.0.0 as a new enable already have the integration
+outbox table from `hook_schema()` and do not need a schema change.
+
 ## Upgrading from 1.0.0-alpha2
 
 Alpha2 sites run update 10007, which creates the empty integration outbox
