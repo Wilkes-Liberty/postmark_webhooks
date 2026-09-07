@@ -52,7 +52,7 @@ final class HealthEvaluator {
       $this->rotationCheck($credentials, $now, $rotation_warning),
       $this->silenceCheck($last_accepted, $now, $expected),
       $this->backlogCheck($expired_beyond, $backlog_limit, $retention_days),
-      $this->sourceCheck($now),
+      $this->sourceCheck($credentials, $now),
       $this->reachabilityCheck(),
       $this->providerCheck(),
     ];
@@ -160,8 +160,8 @@ final class HealthEvaluator {
   /**
    * Aggregate counters cannot describe per-source health.
    */
-  private function sourceCheck(int $now): array {
-    $profiles = WebhookCredentials::fromSettings()->profileDiagnostics($now);
+  private function sourceCheck(WebhookCredentials $credentials, int $now): array {
+    $profiles = $credentials->profileDiagnostics($now);
     if ($profiles['malformed']) {
       return $this->check('source_health', 'unknown', 'malformed_profiles', 'Source profiles are present but unusable; intake returns 503.');
     }
