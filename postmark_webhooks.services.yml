@@ -4,7 +4,7 @@ services:
     arguments: ['@database', '@postmark_webhooks.operator_audit', '@email.validator', '@datetime.time']
   postmark_webhooks.operator_audit:
     class: Drupal\postmark_webhooks\Operator\OperatorAudit
-    arguments: ['@database']
+    arguments: ['@database', '@?audit_chain.logger', '@logger.factory']
   postmark_webhooks.inspector:
     class: Drupal\postmark_webhooks\Operator\SuppressionInspector
     arguments: ['@database', '@postmark_webhooks.suppression_policy', '@postmark_webhooks.suppression_store', '@postmark_webhooks.operator_audit', '@email.validator', '@datetime.time', '@postmark_webhooks.integration_outbox']
