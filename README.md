@@ -58,16 +58,16 @@ configuration:
 $settings['postmark_webhooks.source_profiles'] = [
   'marketing' => [
     'secret' => getenv('POSTMARK_WEBHOOK_SECRET_MARKETING') ?: '',
-    'previous' => [
-      'secret' => getenv('POSTMARK_WEBHOOK_PREVIOUS_SECRET_MARKETING') ?: '',
-      'expires' => 1790000000, // Replace with an explicit Unix expiry timestamp.
-    ],
     'sources' => [
       ['server_id' => '23', 'message_stream' => 'outbound'],
     ],
   ],
 ];
 ```
+
+During rotation, add a non-empty `previous.secret` and an explicit Unix
+`expires` timestamp. Omit `previous` otherwise. An empty previous secret is
+ignored; a malformed non-empty previous fails closed with 503.
 
 Authenticate the profile credential first, then accept only that profile's
 sources. A payload for another profile's server is 403 and is not stored.

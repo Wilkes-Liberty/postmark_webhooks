@@ -315,10 +315,14 @@ final class WebhookCredentials {
     if ($previous === NULL) {
       return NULL;
     }
-    if (!is_array($previous)
-      || !is_string($previous['secret'] ?? NULL)
-      || $previous['secret'] === ''
-      || str_contains($previous['secret'], "\0")
+    if (!is_array($previous)) {
+      throw new \InvalidArgumentException('Invalid source profile previous secret.');
+    }
+    $secret = $previous['secret'] ?? NULL;
+    if ($secret === NULL || $secret === '') {
+      return NULL;
+    }
+    if (!is_string($secret) || str_contains($secret, "\0")
       || !is_int($previous['expires'] ?? NULL)
       || $previous['expires'] <= 0) {
       throw new \InvalidArgumentException('Invalid source profile previous secret.');

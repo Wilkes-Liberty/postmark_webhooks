@@ -203,6 +203,22 @@ class PostmarkSourceProfileAuthTest extends KernelTestBase {
   }
 
   /**
+   * An empty previous secret is ignored and does not 503 the profile.
+   */
+  public function testEmptyPreviousSecretIsOmitted(): void {
+    $profiles = $this->twoProfiles();
+    $profiles['marketing']['previous'] = [
+      'secret' => '',
+      'expires' => 200,
+    ];
+    new Settings([
+      'postmark_webhooks.source_profiles' => $profiles,
+    ] + Settings::getAll());
+    $this->assertSame(200, $this->bounce('marketing-secret-test-only', '23', 'outbound', '14'));
+    $this->assertSame(1, $this->events());
+  }
+
+  /**
    * Duplicate secrets or bindings fail closed with 503.
    */
   public function testMalformedProfilesRefuse(): void {
