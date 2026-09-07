@@ -30,7 +30,9 @@ final class WebhookCredentials {
   private bool $acceptedViaProfile = FALSE;
 
   /**
-   * Constructs an immutable snapshot of the configured credentials.
+   * Constructs a snapshot of the configured credentials.
+   *
+   * The last accepted profile is stored on the instance by accepts().
    *
    * @param mixed $active
    *   Shared active secret from settings.
@@ -278,7 +280,11 @@ final class WebhookCredentials {
       }
       $previous = self::parsePrevious($profile['previous'] ?? NULL);
       $sources = self::parseSources($profile['sources'] ?? NULL);
-      foreach ([$profile['secret'], $previous['secret'] ?? ''] as $secret) {
+      $candidates = [$profile['secret']];
+      if ($previous !== NULL) {
+        $candidates[] = $previous['secret'];
+      }
+      foreach ($candidates as $secret) {
         if ($secret === '') {
           continue;
         }

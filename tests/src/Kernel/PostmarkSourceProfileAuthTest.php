@@ -203,6 +203,37 @@ class PostmarkSourceProfileAuthTest extends KernelTestBase {
   }
 
   /**
+   * Omitting previous does not emit PHP warnings while parsing profiles.
+   */
+  public function testOmittedPreviousDoesNotWarn(): void {
+    $warnings = [];
+    $status = 0;
+    set_error_handler(static function (int $severity, string $message) use (&$warnings): bool {
+      $warnings[] = $message;
+      return TRUE;
+    });
+    try {
+      new Settings([
+        'postmark_webhooks.source_profiles' => [
+          'marketing' => [
+            'secret' => 'marketing-secret-test-only',
+            'sources' => [
+              ['server_id' => '23', 'message_stream' => 'outbound'],
+            ],
+          ],
+        ],
+      ] + Settings::getAll());
+      $status = $this->bounce('marketing-secret-test-only', '23', 'outbound', '15');
+    }
+    finally {
+      restore_error_handler();
+    }
+    $this->assertSame(200, $status);
+    $this->assertSame([], $warnings);
+    $this->assertSame(1, $this->events());
+  }
+
+  /**
    * An empty previous secret is ignored and does not 503 the profile.
    */
   public function testEmptyPreviousSecretIsOmitted(): void {
