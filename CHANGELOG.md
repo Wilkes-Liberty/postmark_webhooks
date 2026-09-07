@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- #3621236: Verify operator forms in Claro: associated instructions, named result regions, field-level filter errors, destructive confirmation controls and Cancel on erasure. Live screen-reader certification remains outstanding.
 - #3621235: Add configurable multi-batch retention draining with a lock, optional wall-time budget, CLI drain command and oldest-expired backlog visibility. The 250-row batch size is unchanged. Durable suppression and operator audits are not deleted.
 - #3621234: Add a permission-controlled MessageID timeline for retained delivery, bounce and complaint events. Lookup stays in the form, not URLs. Delivery is provider evidence and does not override suppression. The view does not claim to be a complete provider archive.
 - #3621231: Add optional named source profiles in settings.php that bind independently rotated webhook credentials to server and stream pairs. Authenticate the credential first, then reject cross-profile payloads before storage. The shared secret remains the default; it is ignored while any profile is usable.

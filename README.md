@@ -390,6 +390,11 @@ the message predates installation. Delivery rows are provider evidence, not
 proof of inbox placement, and do not override suppression. Raw payloads and
 legacy descriptions are omitted.
 
+Operator forms and reports are verified in Claro for labels, associated
+instructions, field-level errors, status regions and confirmation Cancel
+controls. Live screen-reader certification remains outstanding; see
+[docs/accessibility-verification.md](docs/accessibility-verification.md).
+
 ## Policy preview and diagnostics
 
 The settings page links to a read-only policy preview. Select the real mail path
@@ -551,6 +556,7 @@ this server and the full suite on Drupal 10.6, 11.3 and 11.4 with PostgreSQL 16,
 plus an isolated Drupal 10.3 compatibility-floor job. MySQL 8.4, MariaDB 10.11
 and SQLite run the same suite on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5.
 See [docs/integration-verification.md](docs/integration-verification.md),
+[docs/accessibility-verification.md](docs/accessibility-verification.md),
 [docs/database-verification.md](docs/database-verification.md),
 [docs/published-package-verification.md](docs/published-package-verification.md),
 [docs/installation-upgrade.md](docs/installation-upgrade.md),

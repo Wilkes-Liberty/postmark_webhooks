@@ -6,6 +6,7 @@ namespace Drupal\postmark_webhooks\Form;
 
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Url;
 use Drupal\postmark_webhooks\Operator\RecipientPrivacy;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -13,6 +14,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * Confirms bounded history erasure while explicitly retaining suppression.
  */
 final class RecipientErasureForm extends FormBase {
+
+  use OperatorFormTrait;
 
   /**
    * Constructs the erasure form.
@@ -37,12 +40,17 @@ final class RecipientErasureForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
-    $form['#cache']['max-age'] = 0;
-    $form['#attributes']['class'][] = 'postmark-webhooks-operator';
-    $form['#attached']['library'][] = 'postmark_webhooks/operator';
-    $form['explanation'] = ['#markup' => $this->t('Erase this recipient’s stored event history only. Minimal suppression evidence, consent protections and audit records remain. This does not erase backups, downloaded exports, provider records or new events received after confirmation is prepared.')];
+    $this->operatorShell(
+      $form,
+      'postmark-webhooks-erasure-help',
+      $this->t('Erase this recipient’s stored event history only. Minimal suppression evidence, consent protections and audit records remain. This does not erase backups, downloaded exports, provider records or new events received after confirmation is prepared.'),
+    );
     if ($recipient = $form_state->get('recipient')) {
-      $form['subject'] = ['#type' => 'item', '#title' => $this->t('Recipient'), '#plain_text' => $recipient];
+      $form['subject'] = [
+        '#type' => 'item',
+        '#title' => $this->t('Recipient'),
+        '#plain_text' => $recipient,
+      ];
       $form['acknowledge'] = [
         '#type' => 'checkbox',
         '#title' => $this->t('I understand that suppression evidence and audit records remain.'),
@@ -51,11 +59,28 @@ final class RecipientErasureForm extends FormBase {
       $label = $this->t('Confirm history erasure');
     }
     else {
-      $form['recipient'] = ['#type' => 'email', '#title' => $this->t('Recipient'), '#required' => TRUE];
+      $form['recipient'] = [
+        '#type' => 'email',
+        '#title' => $this->t('Recipient'),
+        '#required' => TRUE,
+      ];
       $label = $this->t('Review history erasure');
     }
     $form['actions']['#type'] = 'actions';
-    $form['actions']['submit'] = ['#type' => 'submit', '#value' => $label];
+    $form['actions']['submit'] = [
+      '#type' => 'submit',
+      '#value' => $label,
+    ];
+    if ($form_state->get('recipient')) {
+      $form['actions']['submit']['#button_type'] = 'danger';
+      $form['actions']['submit']['#attributes']['class'][] = 'button--danger';
+      $form['actions']['cancel'] = [
+        '#type' => 'link',
+        '#title' => $this->t('Cancel'),
+        '#url' => Url::fromRoute('postmark_webhooks.recipient_erase'),
+        '#attributes' => ['class' => ['button']],
+      ];
+    }
     return $form;
   }
 

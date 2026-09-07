@@ -2,3 +2,8 @@ operator:
   css:
     component:
       css/operator.css: {}
+  js:
+    js/operator.js: {}
+  dependencies:
+    - core/drupal
+    - core/once

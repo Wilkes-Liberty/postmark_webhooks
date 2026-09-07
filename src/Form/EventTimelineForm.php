@@ -7,6 +7,7 @@ namespace Drupal\postmark_webhooks\Form;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\postmark_webhooks\Operator\EventTimeline;
+use Drupal\postmark_webhooks\Source\SourceContext;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -15,6 +16,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * @internal
  */
 final class EventTimelineForm extends FormBase {
+
+  use OperatorFormTrait;
 
   /**
    * Constructs the timeline form.
@@ -39,12 +42,11 @@ final class EventTimelineForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
-    $form['#cache']['max-age'] = 0;
-    $form['#attributes']['class'][] = 'postmark-webhooks-operator';
-    $form['#attached']['library'][] = 'postmark_webhooks/operator';
-    $form['explanation'] = [
-      '#markup' => $this->t('This timeline uses retained local events only. It is not a complete provider archive. Delivery is provider evidence, not proof of inbox placement, and does not override suppression. Message identifiers are submitted in this form, not in lookup URLs.'),
-    ];
+    $this->operatorShell(
+      $form,
+      'postmark-webhooks-timeline-help',
+      $this->t('This timeline uses retained local events only. It is not a complete provider archive. Delivery is provider evidence, not proof of inbox placement, and does not override suppression. Message identifiers are submitted in this form, not in lookup URLs.'),
+    );
     $types = ['' => $this->t('- Any -')];
     foreach (EventTimeline::EVENT_TYPES as $type) {
       $types[$type] = $type;
@@ -90,15 +92,22 @@ final class EventTimelineForm extends FormBase {
     if (!is_array($result)) {
       return $form;
     }
-    $form['archive'] = [
+    $form['result'] = $this->operatorResult(
+      'postmark-webhooks-timeline-result',
+      $this->t('Timeline result'),
+    );
+    $form['result']['archive'] = [
       '#type' => 'container',
-      '#attributes' => ['role' => 'status'],
+      '#attributes' => [
+        'class' => ['postmark-webhooks-operator__help'],
+        'role' => 'note',
+      ],
       'text' => [
         '#markup' => $this->t('History may have been purged or may predate installation. Missing events are not proof that Postmark has no record.'),
       ],
     ];
     if ($result['total'] === 0) {
-      $form['empty'] = [
+      $form['result']['empty'] = [
         '#type' => 'container',
         '#attributes' => ['role' => 'status'],
         'text' => [
@@ -107,7 +116,7 @@ final class EventTimelineForm extends FormBase {
       ];
       return $form;
     }
-    $form['summary'] = [
+    $form['result']['summary'] = [
       '#type' => 'item',
       '#title' => $this->t('Message timeline'),
       '#markup' => $this->t('@count retained events, page @page of @pages. Events are grouped by MessageID and ordered by provider occurrence, then receipt time.', [
@@ -115,10 +124,11 @@ final class EventTimelineForm extends FormBase {
         '@page' => $result['page'] + 1,
         '@pages' => $result['pages'],
       ]),
+      '#wrapper_attributes' => ['role' => 'status'],
     ];
     foreach ($result['events'] as $index => $event) {
       $suppressed = !empty($result['suppressed'][$event->recipient]);
-      $form['events'][$index] = [
+      $form['result']['events'][$index] = [
         '#type' => 'details',
         '#title' => $this->t('@type — @time (@basis)', [
           '@type' => $event->event_type,
@@ -127,39 +137,39 @@ final class EventTimelineForm extends FormBase {
         ]),
         '#open' => TRUE,
       ];
-      $form['events'][$index]['identity'] = [
+      $form['result']['events'][$index]['identity'] = [
         '#type' => 'item',
         '#title' => $this->t('Event identity'),
         '#markup' => $this->t('Distinct from the MessageID. Receipt @receipt.', [
           '@receipt' => gmdate('Y-m-d H:i:s \U\T\C', (int) $event->created),
         ]),
       ];
-      $form['events'][$index]['source'] = [
+      $form['result']['events'][$index]['source'] = [
         '#type' => 'item',
         '#title' => $this->t('Source'),
         '#plain_text' => $event->server_id . ' / ' . $event->message_stream,
       ];
-      $form['events'][$index]['recipient'] = [
+      $form['result']['events'][$index]['recipient'] = [
         '#type' => 'item',
         '#title' => $this->t('Recipient'),
         '#plain_text' => $event->recipient,
       ];
       if ($event->bounce_type !== '') {
-        $form['events'][$index]['bounce'] = [
+        $form['result']['events'][$index]['bounce'] = [
           '#type' => 'item',
           '#title' => $this->t('Bounce type'),
           '#plain_text' => $event->bounce_type,
         ];
       }
       if ($event->event_type === 'Delivery') {
-        $form['events'][$index]['delivery'] = [
+        $form['result']['events'][$index]['delivery'] = [
           '#type' => 'item',
           '#title' => $this->t('Delivery evidence'),
           '#markup' => $this->t('This is provider evidence, not proof of inbox placement. Delivery does not override suppression.'),
         ];
       }
       if ($suppressed) {
-        $form['events'][$index]['suppression'] = [
+        $form['result']['events'][$index]['suppression'] = [
           '#type' => 'item',
           '#title' => $this->t('Suppression'),
           '#markup' => $this->t('This recipient currently has active suppression.'),
@@ -181,6 +191,54 @@ final class EventTimelineForm extends FormBase {
       ];
     }
     return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function validateForm(array &$form, FormStateInterface $form_state): void {
+    $message_id = trim((string) $form_state->getValue('message_id'));
+    if ($message_id === '' || strlen($message_id) > 255 || str_contains($message_id, "\0")) {
+      $form_state->setErrorByName('message_id', $this->t('Enter one exact MessageID.'));
+    }
+    $type = (string) $form_state->getValue('event_type');
+    if ($type !== '' && !in_array($type, EventTimeline::EVENT_TYPES, TRUE)) {
+      $form_state->setErrorByName('event_type', $this->t('Unknown event type.'));
+    }
+    $server = trim((string) $form_state->getValue('server_id'));
+    $stream = trim((string) $form_state->getValue('message_stream'));
+    if (($server === '') !== ($stream === '')) {
+      $form_state->setErrorByName('server_id', $this->t('Provide both source fields or leave both blank.'));
+      $form_state->setErrorByName('message_stream', $this->t('Provide both source fields or leave both blank.'));
+    }
+    elseif ($server !== '') {
+      try {
+        new SourceContext($server, $stream);
+      }
+      catch (\InvalidArgumentException) {
+        $source_error = $this->t('Enter a numeric server ID of at most 20 digits and a non-empty message stream of at most 255 characters.');
+        $form_state->setErrorByName('server_id', $source_error);
+        $form_state->setErrorByName('message_stream', $source_error);
+      }
+    }
+    $from = NULL;
+    $to = NULL;
+    try {
+      $from = $this->dayStart($form_state->getValue('occurred_from'));
+    }
+    catch (\InvalidArgumentException) {
+      $form_state->setErrorByName('occurred_from', $this->t('Invalid start time.'));
+    }
+    try {
+      $to = $this->dayEnd($form_state->getValue('occurred_to'));
+    }
+    catch (\InvalidArgumentException) {
+      $form_state->setErrorByName('occurred_to', $this->t('Invalid end time.'));
+    }
+    if ($from !== NULL && $to !== NULL && $from >= $to) {
+      $form_state->setErrorByName('occurred_from', $this->t('The start time must be before the end time.'));
+      $form_state->setErrorByName('occurred_to', $this->t('The start time must be before the end time.'));
+    }
   }
 
   /**

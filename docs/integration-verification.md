@@ -67,8 +67,10 @@ The tests found and fixed oversized default input widths and private injected
 properties lost during Drupal form-cache serialization. HTTP regressions preserve
 the repeated-submit and CSRF contracts.
 
-These checks do not claim a complete screen-reader audit or production-theme
-certification. PostgreSQL 16 remains the default matrix. MySQL 8.4, MariaDB
+Claro coverage for labels, associated instructions, field-level errors, status
+regions, CSRF and confirmation Cancel/destructive controls is in
+[accessibility-verification.md](accessibility-verification.md). That document
+also records remaining live screen-reader and zoom limits. PostgreSQL 16 remains the default matrix. MySQL 8.4, MariaDB
 10.11 and SQLite run on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5; see
 [database-verification.md](database-verification.md). The Drupal.org archive
 is verified separately; see
