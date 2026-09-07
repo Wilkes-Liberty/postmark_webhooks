@@ -108,11 +108,13 @@ final class WebhookCredentials {
    */
   public function previousExpiresAt(): ?int {
     $times = [];
-    $global = $this->globalPreviousExpiresAt();
-    if ($global !== NULL) {
-      $times[] = $global;
+    if ($this->usableProfileCount() === 0) {
+      $global = $this->globalPreviousExpiresAt();
+      if ($global !== NULL) {
+        $times[] = $global;
+      }
     }
-    foreach ($this->profiles as $profile) {
+    foreach ($this->acceptedProfiles() as $profile) {
       if ($profile['previous'] !== NULL) {
         $times[] = $profile['previous']['expires'];
       }
@@ -127,9 +129,15 @@ final class WebhookCredentials {
     if ($this->profilesMalformed) {
       return 'invalid';
     }
-    $statuses = [$this->globalRotationStatus($now)];
-    foreach ($this->profiles as $profile) {
+    $statuses = [];
+    if ($this->usableProfileCount() === 0) {
+      $statuses[] = $this->globalRotationStatus($now);
+    }
+    foreach ($this->acceptedProfiles() as $profile) {
       $statuses[] = $this->profileRotationStatus($profile, $now);
+    }
+    if ($statuses === []) {
+      return 'absent';
     }
     if (in_array('invalid', $statuses, TRUE)) {
       return 'invalid';
@@ -352,13 +360,20 @@ final class WebhookCredentials {
    * Usable (non-revoked, non-empty secret) profile count.
    */
   private function usableProfileCount(): int {
-    $count = 0;
+    return count($this->acceptedProfiles());
+  }
+
+  /**
+   * Profiles whose credentials the controller will currently accept.
+   */
+  private function acceptedProfiles(): array {
+    $accepted = [];
     foreach ($this->profiles as $profile) {
       if (!$profile['revoked'] && $profile['secret'] !== '') {
-        $count++;
+        $accepted[] = $profile;
       }
     }
-    return $count;
+    return $accepted;
   }
 
   /**
