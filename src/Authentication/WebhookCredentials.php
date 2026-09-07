@@ -104,18 +104,18 @@ final class WebhookCredentials {
   }
 
   /**
-   * Returns the soonest previous-secret expiry, or NULL if none is usable.
+   * Returns the soonest still-active previous-secret expiry, or NULL.
    */
-  public function previousExpiresAt(): ?int {
+  public function previousExpiresAt(int $now): ?int {
     $times = [];
     if ($this->usableProfileCount() === 0) {
       $global = $this->globalPreviousExpiresAt();
-      if ($global !== NULL) {
+      if ($global !== NULL && $now < $global) {
         $times[] = $global;
       }
     }
     foreach ($this->acceptedProfiles() as $profile) {
-      if ($profile['previous'] !== NULL) {
+      if ($profile['previous'] !== NULL && $now < $profile['previous']['expires']) {
         $times[] = $profile['previous']['expires'];
       }
     }
