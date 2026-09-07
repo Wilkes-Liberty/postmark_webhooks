@@ -51,14 +51,14 @@ class PostmarkEventTimelineFormTest extends BrowserTestBase {
     $this->drupalGet($path, ['query' => ['message_id' => 'msg-lookup']]);
     $this->assertSession()->statusCodeEquals(200);
     $this->assertSession()->pageTextContains('not a complete provider archive');
-    $this->assertSession()->pageTextNotContains('Delivery is provider evidence');
-    $this->assertSession()->addressEquals($path . '?message_id=msg-lookup');
+    $this->assertSession()->pageTextNotContains('Distinct from the MessageID');
+    $this->drupalGet($path);
     $this->submitForm(['message_id' => 'missing-id'], 'Look up timeline');
     $this->assertSession()->elementExists('css', '[role="status"]');
     $this->assertSession()->pageTextContains('No retained events match this lookup');
     $this->assertSession()->addressEquals($path);
     $this->submitForm(['message_id' => 'msg-lookup'], 'Look up timeline');
-    $this->assertSession()->pageTextContains('Delivery is provider evidence');
+    $this->assertSession()->pageTextContains('This is provider evidence, not proof of inbox placement');
     $this->assertSession()->pageTextContains('does not override suppression');
     $this->assertSession()->pageTextContains('Distinct from the MessageID');
     $this->assertSession()->responseNotContains('<script>alert(1)</script>');
