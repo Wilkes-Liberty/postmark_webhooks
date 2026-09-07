@@ -74,6 +74,10 @@ also records remaining live screen-reader and zoom limits. PostgreSQL 16 remains
 10.11 and SQLite run on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5; see
 [database-verification.md](database-verification.md). The Drupal.org archive
 is verified separately; see
-[published-package-verification.md](published-package-verification.md). Direct
+[published-package-verification.md](published-package-verification.md). Live
+Postmark webhook acceptance for that archive (sandbox server, provider verify,
+Delivery/Bounce/SubscriptionChange, SpamComplaint via the verify test tool,
+Basic Auth rotation and 401 recovery, GET-only reconciliation) is recorded in
+the same file. Direct
 Symfony transports and custom processors that mutate recipients after the
 adapter callback remain outside the documented adapter boundary.
