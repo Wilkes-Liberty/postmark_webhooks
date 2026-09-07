@@ -83,7 +83,10 @@ class PostmarkWebhookSettingsForm extends ConfigFormBase {
       '#type' => 'item',
       '#title' => $this->t('Webhook URL'),
       '#markup' => $this->t('@url', ['@url' => $webhook_url]),
-      '#description' => $this->t('Put the secret in settings.php using @setting. Configure HTTP Basic Auth in the Postmark dashboard with username postmark and the secret as password. Use HTTPS and restrict the endpoint to Postmark webhook IP addresses.', ['@setting' => "\$settings['postmark_webhooks.webhook_secret']"]),
+      '#description' => $this->t('Put the secret in settings.php using @setting. Optional named source profiles use @profiles and bind each credential to server and stream pairs. Secrets never appear in this form or exported configuration. Configure HTTP Basic Auth in the Postmark dashboard with username postmark and the secret as password. Use HTTPS and restrict the endpoint to Postmark webhook IP addresses.', [
+        '@setting' => "\$settings['postmark_webhooks.webhook_secret']",
+        '@profiles' => "\$settings['postmark_webhooks.source_profiles']",
+      ]),
     ];
 
     $form['suppression'] = [

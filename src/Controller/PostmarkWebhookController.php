@@ -85,7 +85,10 @@ class PostmarkWebhookController extends ControllerBase {
     }
 
     try {
-      if (!SourcePolicy::permitsIntake($data)) {
+      $allowed = $credentials->acceptedProfile() !== NULL
+        ? $credentials->profileAllows($data)
+        : SourcePolicy::permitsIntake($data);
+      if (!$allowed) {
         $this->metrics->recordRejection($this->time->getCurrentTime());
         return new Response('Forbidden', 403);
       }

@@ -100,8 +100,12 @@ suppression never reports an enforced block. `delivery_guaranteed` is always
 false.
 
 `drush postmark-webhooks:diagnostics` keys: `enabled`, `secret_configured`,
-`previous_secret_status`, `coverage`, `intake`, `health`. `previous_secret_status` is
-`absent`, `invalid`, `active` or `expired`. `coverage` has `core`,
+`previous_secret_status`, `source_profiles`, `coverage`, `intake`, `health`.
+`previous_secret_status` is `absent`, `invalid`, `active` or `expired` for
+the previous secret the endpoint currently accepts. A malformed
+`source_profiles` map is `source_profiles.malformed`; it does not force this
+field to `invalid`. `source_profiles` reports enabled/malformed counts and
+profile ids with rotation status; it never includes secrets. `coverage` has `core`,
 `mailer_plus` and `direct_symfony`. `intake` has `accepted`, `duplicate` and
 `rejected`, each with `total` and `last_seen`. `health` has `severity`,
 `endpoint_reachability` and `checks`. Diagnostics omit secrets and
@@ -114,8 +118,9 @@ deprecation.
 
 Supported exported keys on `postmark_webhooks.settings`: `enabled`,
 `bounce_suppression_days`, `complaint_suppression_days`, `event_retention_days`,
-`source_policies`. Webhook secrets, previous-secret overlap, source allowlists
-and reconciliation tokens stay in `settings.php`, not configuration.
+`source_policies`. Webhook secrets, previous-secret overlap, source allowlists,
+source profiles and reconciliation tokens stay in `settings.php`, not
+configuration.
 
 ## Internal
 

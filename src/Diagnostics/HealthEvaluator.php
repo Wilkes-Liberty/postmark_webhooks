@@ -52,7 +52,7 @@ final class HealthEvaluator {
       $this->rotationCheck($credentials, $now, $rotation_warning),
       $this->silenceCheck($last_accepted, $now, $expected),
       $this->backlogCheck($expired_beyond, $backlog_limit, $retention_days),
-      $this->sourceCheck(),
+      $this->sourceCheck($credentials, $now),
       $this->reachabilityCheck(),
       $this->providerCheck(),
     ];
@@ -160,7 +160,14 @@ final class HealthEvaluator {
   /**
    * Aggregate counters cannot describe per-source health.
    */
-  private function sourceCheck(): array {
+  private function sourceCheck(WebhookCredentials $credentials, int $now): array {
+    $profiles = $credentials->profileDiagnostics($now);
+    if ($profiles['malformed']) {
+      return $this->check('source_health', 'unknown', 'malformed_profiles', 'Source profiles are present but unusable; intake returns 503.');
+    }
+    if ($profiles['enabled']) {
+      return $this->check('source_health', 'unknown', 'aggregate_only', 'Source profiles are configured, but counters still have no source labels.');
+    }
     $allowlist = Settings::get('postmark_webhooks.allowed_sources');
     if ($allowlist === NULL) {
       return $this->check('source_health', 'unknown', 'shared_endpoint', 'Intake counters are site-wide and do not identify a source.');
@@ -220,7 +227,7 @@ final class HealthEvaluator {
    * Seconds until the previous secret expires.
    */
   private function expiresIn(WebhookCredentials $credentials, int $now): ?int {
-    $expires = $credentials->previousExpiresAt();
+    $expires = $credentials->previousExpiresAt($now);
     if ($expires === NULL) {
       return NULL;
     }
