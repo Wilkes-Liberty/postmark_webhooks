@@ -71,8 +71,10 @@ class PostmarkIntegrationOutboxTest extends KernelTestBase {
    */
   public function testDisabledStoresNothing(): void {
     $this->config('postmark_webhooks.settings')->set('integration_events_enabled', FALSE)->save();
+    $outbox = $this->container->get('postmark_webhooks.integration_outbox');
+    $this->assertFalse($outbox->shouldEnqueue());
     $this->bounce('1');
-    $this->assertSame([], $this->container->get('postmark_webhooks.integration_outbox')->inspect());
+    $this->assertSame([], $outbox->inspect());
   }
 
   /**

@@ -100,7 +100,7 @@ final class SuppressionInspector {
         'time_basis' => 'receipt',
         'event_key' => hash('sha256', random_bytes(32)),
       ];
-      if ($this->store->record($release)) {
+      if ($this->store->record($release) && $this->outbox->shouldEnqueue()) {
         $this->outbox->enqueue(IntegrationEvent::fromAccepted($release, TRUE));
       }
       $this->audit->record('recover_hard', $row->recipient, $actor, $now, $key);

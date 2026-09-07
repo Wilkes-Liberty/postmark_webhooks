@@ -32,10 +32,17 @@ final class IntegrationOutbox {
   ) {}
 
   /**
+   * Whether a new notification would be persisted.
+   */
+  public function shouldEnqueue(): bool {
+    return $this->enabled() && $this->database->schema()->tableExists('postmark_integration_outbox');
+  }
+
+  /**
    * Enqueues one logical notification in the current transaction.
    */
   public function enqueue(IntegrationEvent $event): void {
-    if (!$this->enabled() || !$this->database->schema()->tableExists('postmark_integration_outbox')) {
+    if (!$this->shouldEnqueue()) {
       return;
     }
     $now = $this->time->getCurrentTime();

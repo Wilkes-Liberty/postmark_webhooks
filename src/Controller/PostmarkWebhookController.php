@@ -132,7 +132,7 @@ class PostmarkWebhookController extends ControllerBase {
       $database->insert('postmark_events')->fields($event)->execute();
       $changed = $this->suppressionStore->record($event);
       $this->metrics->record('accepted', $this->time->getCurrentTime());
-      if ($this->outbox) {
+      if ($this->outbox?->shouldEnqueue()) {
         $this->outbox->enqueue(IntegrationEvent::fromAccepted($event, FALSE));
         if ($changed) {
           $this->outbox->enqueue(IntegrationEvent::fromAccepted($event, TRUE));
