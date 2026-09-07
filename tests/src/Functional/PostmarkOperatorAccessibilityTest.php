@@ -118,11 +118,36 @@ class PostmarkOperatorAccessibilityTest extends BrowserTestBase {
     $this->assertSession()->elementExists('css', '.form-item--error, [aria-invalid="true"]');
     $this->assertSession()->pageTextContains('numeric server ID');
     $this->assertSession()->elementNotExists('css', '#postmark-webhooks-timeline-result');
-    $this->submitForm(['message_id' => 'missing-id', 'server_id' => '', 'message_stream' => ''], 'Look up timeline');
+    $this->submitForm([
+      'message_id' => 'msg-lookup',
+      'server_id' => '',
+      'message_stream' => '',
+      'occurred_from' => 'not-a-date',
+      'occurred_to' => '2026-01-01',
+    ], 'Look up timeline');
+    $this->assertSession()->pageTextContains('Invalid start time.');
+    $this->submitForm([
+      'message_id' => 'msg-lookup',
+      'occurred_from' => '2026-01-10',
+      'occurred_to' => '2026-01-01',
+    ], 'Look up timeline');
+    $this->assertSession()->pageTextContains('The start time must be before the end time.');
+    $this->assertSession()->elementNotExists('css', '#postmark-webhooks-timeline-result');
+    $this->submitForm([
+      'message_id' => 'missing-id',
+      'server_id' => '',
+      'message_stream' => '',
+      'occurred_from' => '',
+      'occurred_to' => '',
+    ], 'Look up timeline');
     $this->assertResultRegion('postmark-webhooks-timeline-result');
     $this->assertSession()->elementExists('css', '[role="status"]');
     $this->assertSession()->pageTextContains('No retained events match this lookup');
-    $this->submitForm(['message_id' => 'msg-lookup'], 'Look up timeline');
+    $this->submitForm([
+      'message_id' => 'msg-lookup',
+      'occurred_from' => '',
+      'occurred_to' => '',
+    ], 'Look up timeline');
     $this->assertSession()->pageTextContains('This is provider evidence, not proof of inbox placement.');
     $this->assertSession()->addressEquals($path);
 

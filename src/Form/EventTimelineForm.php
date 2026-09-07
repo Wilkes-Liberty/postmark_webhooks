@@ -221,18 +221,19 @@ final class EventTimelineForm extends FormBase {
         $form_state->setErrorByName('message_stream', $source_error);
       }
     }
+    $from = NULL;
+    $to = NULL;
     try {
       $from = $this->dayStart($form_state->getValue('occurred_from'));
+    }
+    catch (\InvalidArgumentException) {
+      $form_state->setErrorByName('occurred_from', $this->t('Invalid start time.'));
+    }
+    try {
       $to = $this->dayEnd($form_state->getValue('occurred_to'));
     }
-    catch (\InvalidArgumentException $exception) {
-      if ($exception->getMessage() === 'Invalid start time.') {
-        $form_state->setErrorByName('occurred_from', $this->t('Invalid start time.'));
-      }
-      else {
-        $form_state->setErrorByName('occurred_to', $this->t('Invalid end time.'));
-      }
-      return;
+    catch (\InvalidArgumentException) {
+      $form_state->setErrorByName('occurred_to', $this->t('Invalid end time.'));
     }
     if ($from !== NULL && $to !== NULL && $from >= $to) {
       $form_state->setErrorByName('occurred_from', $this->t('The start time must be before the end time.'));
