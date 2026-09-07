@@ -222,11 +222,13 @@ final class WebhookCredentials {
     if (!$this->acceptedViaProfile || $this->acceptedProfile === NULL) {
       return FALSE;
     }
-    $server = (string) ($data['ServerID'] ?? '');
-    $stream = (string) ($data['MessageStream'] ?? '');
-    if ($server === '' || $stream === '') {
+    $server = $data['ServerID'] ?? '';
+    $stream = $data['MessageStream'] ?? '';
+    if ((!is_string($server) && !is_int($server)) || !is_string($stream)
+      || $server === '' || $stream === '') {
       return FALSE;
     }
+    $server = (string) $server;
     foreach ($this->profiles as $profile) {
       if ($profile['id'] !== $this->acceptedProfile) {
         continue;

@@ -60,7 +60,7 @@ $settings['postmark_webhooks.source_profiles'] = [
     'secret' => getenv('POSTMARK_WEBHOOK_SECRET_MARKETING') ?: '',
     'previous' => [
       'secret' => getenv('POSTMARK_WEBHOOK_PREVIOUS_SECRET_MARKETING') ?: '',
-      'expires' => 1790000000,
+      'expires' => 1790000000, // Replace with an explicit Unix expiry timestamp.
     ],
     'sources' => [
       ['server_id' => '23', 'message_stream' => 'outbound'],
