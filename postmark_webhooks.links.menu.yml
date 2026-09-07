@@ -11,6 +11,12 @@ postmark_webhooks.inspector:
   route_name: postmark_webhooks.inspector
   parent: system.admin_reports
 
+postmark_webhooks.event_timeline:
+  title: 'Postmark message timeline'
+  description: 'Look up retained delivery, bounce and complaint history for one MessageID.'
+  route_name: postmark_webhooks.event_timeline
+  parent: system.admin_reports
+
 postmark_webhooks.recipient_export:
   title: 'Export Postmark recipient data'
   route_name: postmark_webhooks.recipient_export

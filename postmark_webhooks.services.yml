@@ -8,6 +8,9 @@ services:
   postmark_webhooks.inspector:
     class: Drupal\postmark_webhooks\Operator\SuppressionInspector
     arguments: ['@database', '@postmark_webhooks.suppression_policy', '@postmark_webhooks.suppression_store', '@postmark_webhooks.operator_audit', '@email.validator', '@datetime.time', '@postmark_webhooks.integration_outbox']
+  postmark_webhooks.event_timeline:
+    class: Drupal\postmark_webhooks\Operator\EventTimeline
+    arguments: ['@database', '@postmark_webhooks.suppression_policy']
   postmark_webhooks.integration_outbox:
     class: Drupal\postmark_webhooks\Integration\IntegrationOutbox
     arguments: ['@database', '@config.factory', '@module_handler', '@lock', '@logger.factory', '@datetime.time']

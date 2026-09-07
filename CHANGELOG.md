@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- #3621234: Add a permission-controlled MessageID timeline for retained delivery, bounce and complaint events. Lookup stays in the form, not URLs. Delivery is provider evidence and does not override suppression. The view does not claim to be a complete provider archive.
 - #3621231: Add optional named source profiles in settings.php that bind independently rotated webhook credentials to server and stream pairs. Authenticate the credential first, then reject cross-profile payloads before storage. The shared secret remains the default; it is ignored while any profile is usable.
 - #3621232: Add an opt-in transactional outbox for typed integration events after accepted webhooks and suppression changes. Delivery is at-least-once after commit; subscriber failure does not undo suppression. Duplicate webhooks and rolled-back transactions create no extra notifications.
 - #3621233: Add opt-in scheduled read-only reconciliation previews and suppression drift reports. Cron scans completed UTC dates with per-source locks and resumable cursors, never applies imports, and does not infer consent from provider absence.
