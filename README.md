@@ -591,5 +591,5 @@ NULL payload, retention and case-insensitive suppression.
 Report issues in the [Drupal.org issue queue](https://www.drupal.org/project/issues/postmark_webhooks).
 Source: [git.drupalcode.org](https://git.drupalcode.org/project/postmark_webhooks).
 
-Maintainer: Jeremy Michael Cerda. Sponsor: [Wilkes & Liberty, LLC](https://wilkesliberty.com).
+Maintainer: [Jeremy Michael Cerda](https://www.drupal.org/u/jmcerda). Sponsor: [Wilkes & Liberty, LLC](https://wilkesliberty.com).
 Licensed under GPL-2.0-or-later; see [LICENSE.txt](LICENSE.txt).
