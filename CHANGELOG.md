@@ -17,7 +17,7 @@ public suppression contract is unchanged.
 ### Upgrading from 1.0.0
 
 Follow the 1.0.1 notes for update 10007, then this release. Drupal 11 sites
-that failed that update on 1.0.0 can complete it on 1.1.0.
+that failed that update on 1.0.0 can complete it on 1.0.1 or later.
 
 ## [1.0.1] - 2026-09-07
 
