@@ -101,9 +101,11 @@ false.
 
 `drush postmark-webhooks:diagnostics` keys: `enabled`, `secret_configured`,
 `previous_secret_status`, `source_profiles`, `coverage`, `intake`, `health`.
-`previous_secret_status` is `absent`, `invalid`, `active` or `expired`.
-`source_profiles` reports enabled/malformed counts and profile ids with
-rotation status; it never includes secrets. `coverage` has `core`,
+`previous_secret_status` is `absent`, `invalid`, `active` or `expired` for
+the previous secret the endpoint currently accepts. A malformed
+`source_profiles` map is `source_profiles.malformed`; it does not force this
+field to `invalid`. `source_profiles` reports enabled/malformed counts and
+profile ids with rotation status; it never includes secrets. `coverage` has `core`,
 `mailer_plus` and `direct_symfony`. `intake` has `accepted`, `duplicate` and
 `rejected`, each with `total` and `last_seen`. `health` has `severity`,
 `endpoint_reachability` and `checks`. Diagnostics omit secrets and

@@ -241,6 +241,47 @@ class PostmarkSourceProfileAuthTest extends KernelTestBase {
   }
 
   /**
+   * Malformed profiles do not mark a valid previous secret invalid.
+   */
+  public function testMalformedProfilesKeepSharedPreviousStatus(): void {
+    $time = $this->createMock(TimeInterface::class);
+    $time->method('getRequestTime')->willReturn(100);
+    $time->method('getCurrentTime')->willReturn(100);
+    $this->container->set('datetime.time', $time);
+    new Settings([
+      'postmark_webhooks.webhook_secret' => 'shared-secret-test-only',
+      'postmark_webhooks.source_profiles' => [
+        'marketing' => [
+          'secret' => 'marketing-secret-test-only',
+        ],
+      ],
+    ] + Settings::getAll());
+    $diagnostics = $this->container->get('postmark_webhooks.policy_preview')->diagnostics();
+    $this->assertFalse($diagnostics['secret_configured']);
+    $this->assertTrue($diagnostics['source_profiles']['malformed']);
+    $this->assertSame('absent', $diagnostics['previous_secret_status']);
+    $report = $this->container->get('postmark_webhooks.health')->evaluate(100);
+    $this->assertSame('missing', $this->healthStatus($report, 'secret'));
+    $this->assertSame('absent', $this->healthStatus($report, 'rotation'));
+    new Settings([
+      'postmark_webhooks.webhook_secret' => 'shared-secret-test-only',
+      'postmark_webhooks.previous_webhook_secret' => [
+        'secret' => 'shared-previous-test-only',
+        'expires' => 200,
+      ],
+      'postmark_webhooks.source_profiles' => [
+        'marketing' => [
+          'secret' => 'marketing-secret-test-only',
+        ],
+      ],
+    ] + Settings::getAll());
+    $diagnostics = $this->container->get('postmark_webhooks.policy_preview')->diagnostics();
+    $this->assertTrue($diagnostics['source_profiles']['malformed']);
+    $this->assertSame('active', $diagnostics['previous_secret_status']);
+    $this->assertStringNotContainsString('shared-previous-test-only', json_encode($diagnostics));
+  }
+
+  /**
    * Diagnostics list profile ids and rotation without secret values.
    */
   public function testDiagnosticsOmitSecrets(): void {
@@ -259,6 +300,26 @@ class PostmarkSourceProfileAuthTest extends KernelTestBase {
     $config = $this->config('postmark_webhooks.settings')->getRawData();
     $this->assertArrayNotHasKey('source_profiles', $config);
     $this->assertArrayNotHasKey('webhook_secret', $config);
+  }
+
+  /**
+   * Returns one health check status.
+   *
+   * @param array $report
+   *   A health evaluation report.
+   * @param string $id
+   *   Check id.
+   *
+   * @return string
+   *   The check status.
+   */
+  private function healthStatus(array $report, string $id): string {
+    foreach ($report['checks'] as $check) {
+      if ($check['id'] === $id) {
+        return $check['status'];
+      }
+    }
+    $this->fail('Missing check ' . $id);
   }
 
 }

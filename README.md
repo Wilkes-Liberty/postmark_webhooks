@@ -49,6 +49,8 @@ A previous credential never substitutes for a missing or malformed active one.
 Neither credential is read from Drupal configuration or included in diagnostics.
 `WebhookCredentials::rotationStatus()` reports only absent, invalid, active or
 expired; it does not reveal values. Expiry is fixed, never extended by requests.
+Malformed `source_profiles` maps are reported on `source_profiles.malformed`,
+not as `previous_secret_status`.
 
 Sites that receive webhooks from more than one Postmark server can bind each
 credential to server and stream pairs. Put named profiles in settings.php, not

@@ -124,11 +124,11 @@ final class WebhookCredentials {
 
   /**
    * Returns readiness without exposing either credential or its expiry.
+   *
+   * Reports only previous secrets the endpoint currently accepts. A malformed
+   * source_profiles map is source_profiles.malformed, not this status.
    */
   public function rotationStatus(int $now): string {
-    if ($this->profilesMalformed) {
-      return 'invalid';
-    }
     $statuses = [];
     if ($this->usableProfileCount() === 0) {
       $statuses[] = $this->globalRotationStatus($now);
