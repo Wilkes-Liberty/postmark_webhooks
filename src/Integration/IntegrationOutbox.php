@@ -105,17 +105,15 @@ final class IntegrationOutbox {
           ])->condition('oid', $id)->execute();
           $result['delivered']++;
         }
+        catch (\InvalidArgumentException $exception) {
+          $this->failRow($id, (int) $row['attempts'] + 1, $now, $exception, TRUE);
+          $result['failed']++;
+        }
         catch (\Throwable $exception) {
           $attempts = (int) $row['attempts'] + 1;
           $failed = $attempts >= $max_attempts;
-          $this->database->update('postmark_integration_outbox')->fields([
-            'status' => $failed ? 'failed' : 'pending',
-            'attempts' => $attempts,
-            'available_at' => $now + $this->backoff($attempts),
-            'last_error' => $this->safeError($exception),
-          ])->condition('oid', $id)->execute();
+          $this->failRow($id, $attempts, $now, $exception, $failed);
           $result['failed']++;
-          $this->logFailure($failed);
         }
       }
       return $result;
@@ -225,12 +223,33 @@ final class IntegrationOutbox {
   }
 
   /**
+   * Marks a row failed or pending with backoff.
+   */
+  private function failRow(int|string $id, int $attempts, int $now, \Throwable $exception, bool $terminal): void {
+    $this->database->update('postmark_integration_outbox')->fields([
+      'status' => $terminal ? 'failed' : 'pending',
+      'attempts' => $attempts,
+      'available_at' => $now + ($terminal ? 0 : $this->backoff($attempts)),
+      'last_error' => $this->safeError($exception),
+    ])->condition('oid', $id)->execute();
+    $this->logFailure($terminal);
+  }
+
+  /**
    * Rebuilds an event from stored JSON without logging it.
    */
   private function decode(string $payload): IntegrationEvent {
-    $data = json_decode($payload, TRUE, 512, JSON_THROW_ON_ERROR);
+    try {
+      $data = json_decode($payload, TRUE, 512, JSON_THROW_ON_ERROR);
+    }
+    catch (\JsonException $exception) {
+      throw new \InvalidArgumentException('Stored integration payload is invalid.');
+    }
     if (!is_array($data) || !is_array($data['source'] ?? NULL)) {
       throw new \InvalidArgumentException('Stored integration payload is invalid.');
+    }
+    if (($data['version'] ?? NULL) !== IntegrationEvent::VERSION) {
+      throw new \InvalidArgumentException('Unsupported integration event version.');
     }
     return new IntegrationEvent(
       (string) $data['type'],

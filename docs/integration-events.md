@@ -7,8 +7,9 @@ notifies them after accepted webhooks and suppression changes commit.
 
 Integration events are off until `integration_events_enabled` is true.
 Intake and suppression stay synchronous. Delivery runs after commit on
-cron (or `drush postmark-webhooks:outbox` plus a dispatch). Subscriber
-failure does not undo accepted evidence.
+cron, or with `drush postmark-webhooks:outbox-dispatch`. Inspect rows
+with `drush postmark-webhooks:outbox`; that command does not deliver.
+Subscriber failure does not undo accepted evidence.
 
 ## Event types
 
@@ -33,9 +34,11 @@ Delivery is at-least-once. Consumers must treat `eventKey` plus `type` as
 the idempotency key. This module does not promise exactly-once external
 side effects.
 
-Cron delivers a bounded batch under a lock. Failures retry with backoff
-and remain inspectable. `replay()` requeues a failed or delivered row.
-Delivered rows expire under `integration_events_retention_seconds`.
+Cron delivers a bounded batch under a lock. Subscriber failures retry
+with backoff. Invalid stored payloads and unsupported event versions
+fail immediately and stay inspectable for replay. `replay()` requeues a
+failed or delivered row. Delivered rows expire under
+`integration_events_retention_seconds`.
 
 ```php
 function mymodule_postmark_webhooks_integration_event(\Drupal\postmark_webhooks\Integration\IntegrationEvent $event): void {
@@ -45,4 +48,5 @@ function mymodule_postmark_webhooks_integration_event(\Drupal\postmark_webhooks\
 
 ```sh
 drush postmark-webhooks:outbox --format=json
+drush postmark-webhooks:outbox-dispatch --format=json
 ```

@@ -169,4 +169,56 @@ class PostmarkIntegrationOutboxTest extends KernelTestBase {
     $this->assertSame('lock', $skipped['skipped']);
   }
 
+  /**
+   * Unsupported versions and invalid JSON fail once and are not retried.
+   */
+  public function testPoisonPayloadFailsWithoutRetry(): void {
+    $now = $this->container->get('datetime.time')->getCurrentTime();
+    $database = $this->container->get('database');
+    $database->insert('postmark_integration_outbox')->fields([
+      'fingerprint' => str_repeat('b', 64),
+      'type' => IntegrationEvent::WEBHOOK_ACCEPTED,
+      'version' => 99,
+      'payload' => json_encode([
+        'type' => IntegrationEvent::WEBHOOK_ACCEPTED,
+        'version' => 99,
+        'eventKey' => str_repeat('c', 64),
+        'source' => ['serverId' => '1', 'messageStream' => 'outbound'],
+        'occurred' => $now,
+        'timeBasis' => 'provider',
+        'recipient' => 'recipient0@example.com',
+        'reason' => NULL,
+        'suppressed' => NULL,
+      ], JSON_THROW_ON_ERROR),
+      'status' => 'pending',
+      'attempts' => 0,
+      'available_at' => $now,
+      'created' => $now,
+      'delivered_at' => 0,
+      'last_error' => '',
+    ])->execute();
+    $database->insert('postmark_integration_outbox')->fields([
+      'fingerprint' => str_repeat('d', 64),
+      'type' => IntegrationEvent::WEBHOOK_ACCEPTED,
+      'version' => 1,
+      'payload' => '{',
+      'status' => 'pending',
+      'attempts' => 0,
+      'available_at' => $now,
+      'created' => $now,
+      'delivered_at' => 0,
+      'last_error' => '',
+    ])->execute();
+    $result = $this->container->get('postmark_webhooks.integration_outbox')->dispatch();
+    $this->assertSame(2, $result['failed']);
+    $this->assertSame(0, $result['delivered']);
+    foreach ($this->container->get('postmark_webhooks.integration_outbox')->inspect() as $row) {
+      $this->assertSame('failed', $row['status']);
+      $this->assertSame(1, $row['attempts']);
+      $this->assertStringNotContainsString('example.com', json_encode($row));
+    }
+    $again = $this->container->get('postmark_webhooks.integration_outbox')->dispatch();
+    $this->assertSame(0, $again['attempted']);
+  }
+
 }

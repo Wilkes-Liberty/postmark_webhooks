@@ -93,4 +93,12 @@ final class PostmarkWebhookCommands extends DrushCommands {
     ]);
   }
 
+  /**
+   * Delivers one bounded outbox page without sending mail.
+   */
+  #[CLI\Command(name: 'postmark-webhooks:outbox-dispatch', aliases: ['pm-wh:outbox-dispatch'])]
+  public function outboxDispatch(array $options = ['format' => 'json']): UnstructuredData {
+    return new UnstructuredData($this->outbox->dispatch());
+  }
+
 }
