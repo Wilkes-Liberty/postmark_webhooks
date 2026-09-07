@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- #3621301: Create the integration outbox and drift-report tables from hook_schema() during updates so Drupal 11 no longer fatals on the removed drupal_get_module_schema() helper.
+
 ## [1.0.0] - 2026-09-07
 
 - #3621236: Verify operator forms in Claro: associated instructions, named result regions, field-level filter errors, destructive confirmation controls and Cancel on erasure. Live screen-reader certification remains outstanding.
