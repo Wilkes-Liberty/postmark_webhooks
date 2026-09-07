@@ -2,7 +2,16 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-07
+
 - #3621301: Create the integration outbox and drift-report tables from hook_schema() during updates. Drupal 11 removed drupal_get_module_schema(), which caused updatedb to fail.
+
+### Upgrading from 1.0.0
+
+Back up the database, `composer require drupal/postmark_webhooks:^1.0`, then
+`drush updatedb -y` and `drush cache:rebuild`. Drupal 11 sites that failed
+update 10007 on 1.0.0 run that update on 1.0.1. The public suppression
+contract is unchanged.
 
 ## [1.0.0] - 2026-09-07
 
