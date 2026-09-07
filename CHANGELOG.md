@@ -2,8 +2,22 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-07
+
 - #3621495: Dual-write operator audits to audit_chain when it is installed.
   Fail open. Keep the local table. Never send a mailbox.
+
+### Upgrading from 1.0.1
+
+Back up the database, `composer require drupal/postmark_webhooks:^1.0`, then
+`drush cache:rebuild`. There is no new update hook. Enable
+`drupal/audit_chain` separately if you want the optional dual-write. The
+public suppression contract is unchanged.
+
+### Upgrading from 1.0.0
+
+Follow the 1.0.1 notes for update 10007, then this release. Drupal 11 sites
+that failed that update on 1.0.0 can complete it on 1.0.1 or later.
 
 ## [1.0.1] - 2026-09-07
 
