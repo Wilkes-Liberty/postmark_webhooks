@@ -110,7 +110,7 @@ Configure suppression and retention at
 
 Back up the database, `composer require drupal/postmark_webhooks:^1.0`, then
 run `drush updatedb -y` and `drush cache:rebuild`. Drupal 11 sites that
-failed update 10007 on 1.0.0 run that update on 1.0.1.
+failed update 10007 on 1.0.0 can complete that update on 1.0.1.
 
 ## Upgrading from 1.0.0-alpha2
 

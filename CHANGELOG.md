@@ -10,8 +10,8 @@
 
 Back up the database, `composer require drupal/postmark_webhooks:^1.0`, then
 `drush updatedb -y` and `drush cache:rebuild`. Drupal 11 sites that failed
-update 10007 on 1.0.0 run that update on 1.0.1. The public suppression
-contract is unchanged.
+update 10007 on 1.0.0 can complete that update on 1.0.1. The public
+suppression contract is unchanged.
 
 ## [1.0.0] - 2026-09-07
 

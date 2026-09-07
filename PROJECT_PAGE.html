@@ -18,7 +18,7 @@
 <h3>Requirements and optional integrations</h3>
 <p>PHP 8.3 or later and Drupal 10.3 or 11. PostgreSQL 16 is the default CI database; MySQL 8.4, MariaDB 10.11 and SQLite are also verified. The optional Postmark Webhooks Mailer adapter is tested with Mailer Plus 1.6.2 and 2.0.2. The receiver needs no API token; the optional reconciliation module reads server tokens from settings.</p>
 <h3>Upgrading</h3>
-<p>From 1.0.0, require <code>^1.0</code> and run <code>drush updatedb -y</code>. Drupal 11 sites that failed update 10007 on 1.0.0 complete that update on 1.0.1.</p>
+<p>From 1.0.0, back up the database, require <code>^1.0</code>, then run <code>drush updatedb -y</code> and <code>drush cache:rebuild</code>. Drupal 11 sites that failed update 10007 on 1.0.0 can complete that update on 1.0.1.</p>
 <p>From 1.0.0-alpha2, back up the database, require <code>^1.0</code>, then run <code>drush updatedb -y</code> and <code>drush cache:rebuild</code>. Update 10007 creates the empty integration outbox table. Optional health, source profiles, integration events, scheduled reconciliation, MessageID timeline and extra retention draining stay off until configured.</p>
 <p>From 1.0.0-alpha1, run every update through 10007, including restartable 250-row batches. Updates preserve retained events, backfill suppression state and remove legacy provider free text. Previously discarded history cannot be recovered locally. Review suppression policy before resuming mail; optional submodules must be enabled separately. There is no supported downgrade.</p>
 <h3>Limits</h3>

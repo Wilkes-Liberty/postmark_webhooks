@@ -52,7 +52,7 @@ or re-run updates.
 ## Upgrading from 1.0.0
 
 Drupal 11 sites that failed update 10007 on 1.0.0 should install 1.0.1 and
-re-run `updatedb`. The update now reads table specifications from
+re-run `drush updatedb`. The update now reads table specifications from
 `hook_schema()` instead of the removed `drupal_get_module_schema()` helper.
 
 ```sh
