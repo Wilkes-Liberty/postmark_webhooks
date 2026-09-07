@@ -161,11 +161,14 @@ final class HealthEvaluator {
    * Aggregate counters cannot describe per-source health.
    */
   private function sourceCheck(): array {
-    $allowlist = Settings::get('postmark_webhooks.allowed_sources');
-    $profiles = Settings::get('postmark_webhooks.source_profiles');
-    if ($profiles !== NULL) {
+    $profiles = WebhookCredentials::fromSettings()->profileDiagnostics(0);
+    if ($profiles['malformed']) {
+      return $this->check('source_health', 'unknown', 'malformed_profiles', 'Source profiles are present but unusable; intake returns 503.');
+    }
+    if ($profiles['enabled']) {
       return $this->check('source_health', 'unknown', 'aggregate_only', 'Source profiles are configured, but counters still have no source labels.');
     }
+    $allowlist = Settings::get('postmark_webhooks.allowed_sources');
     if ($allowlist === NULL) {
       return $this->check('source_health', 'unknown', 'shared_endpoint', 'Intake counters are site-wide and do not identify a source.');
     }
