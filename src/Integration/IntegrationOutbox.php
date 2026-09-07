@@ -39,6 +39,7 @@ final class IntegrationOutbox {
       return;
     }
     $now = $this->time->getCurrentTime();
+    $transaction = $this->database->startTransaction();
     try {
       $this->database->insert('postmark_integration_outbox')->fields([
         'fingerprint' => $event->fingerprint(),
@@ -54,8 +55,9 @@ final class IntegrationOutbox {
       ])->execute();
     }
     catch (IntegrityConstraintViolationException $exception) {
-      // Duplicate webhook or a second enqueue of the same logical event.
+      $transaction->rollBack();
     }
+    unset($transaction);
   }
 
   /**

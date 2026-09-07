@@ -112,6 +112,31 @@ class PostmarkIntegrationOutboxTest extends KernelTestBase {
   }
 
   /**
+   * A duplicate enqueue rolls back its savepoint; outer work continues.
+   */
+  public function testDuplicateEnqueueDoesNotPoisonTransaction(): void {
+    $event = new IntegrationEvent(
+      IntegrationEvent::WEBHOOK_ACCEPTED,
+      str_repeat('e', 64),
+      '1',
+      'outbound',
+      1577880000,
+      'provider',
+      'recipient0@example.com',
+      NULL,
+      NULL,
+    );
+    $database = $this->container->get('database');
+    $outbox = $this->container->get('postmark_webhooks.integration_outbox');
+    $transaction = $database->startTransaction();
+    $outbox->enqueue($event);
+    $outbox->enqueue($event);
+    $count = (int) $database->select('postmark_integration_outbox')->countQuery()->execute()->fetchField();
+    unset($transaction);
+    $this->assertSame(1, $count);
+  }
+
+  /**
    * Pending rows survive until dispatch; inspect omits recipients.
    */
   public function testCrashBetweenCommitAndDispatchThenDelivers(): void {
