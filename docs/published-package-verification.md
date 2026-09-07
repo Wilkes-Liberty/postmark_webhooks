@@ -39,7 +39,7 @@ after the run.
 
 ### Webhook verification
 
-`POST /webhooks` with `Verify: true` and HTTP Basic Auth (username `postmark`)
+`POST /webhooks` with JSON body field `"Verify": true` and HTTP Basic Auth (username `postmark`)
 created an outbound webhook. `POST /webhooks/{id}/verify` then reported
 Success true, "All 4 triggers verified successfully", each with StatusCode
 200:
