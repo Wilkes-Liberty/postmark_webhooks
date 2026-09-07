@@ -88,8 +88,8 @@ placed in real inboxes.
   trigger statuses `unverified`. Restoring the secret and verifying again
   returned all four StatusCode 200 and statuses `verified`.
 
-Postmark does **not** retry HTTP 401 (permanent 4xx). Recovery is restore the
-credential and re-verify. Delayed retries apply to 5xx, 408, 429 and network
+Postmark does **not** retry HTTP 401 (permanent 4xx). Restore the credential
+and re-verify. Delayed retries apply to 5xx, 408, 429 and network
 failures. A delayed older event was stored locally with `time_basis` provider
 from the payload timestamp; live 5xx retry backoff was not forced in this run.
 
@@ -99,7 +99,7 @@ from the payload timestamp; live 5xx retry backoff was not forced in this run.
 19007494. `GET /server` matched that ID. Unfiltered
 `GET /message-streams/outbound/suppressions/dump` returned 3 rows (2
 ManualSuppression, 1 HardBounce). The same dump with
-`fromdate=todate=2026-09-07` returned 0 even though those rows' `CreatedAt`
+`fromdate=2026-09-07&todate=2026-09-07` returned 0 even though those rows' `CreatedAt`
 dates were 2026-09-07 — a provider date-filter quirk, recorded as-is.
 
 `drush postmark-webhooks:reconcile-preview 19007494 outbound 2026-09-07`
