@@ -172,11 +172,10 @@ Recipient export streams 250-row pages and is audited. Protect the download.
 `tests/fixtures/verify-installation-docs.sh` follows these commands on
 disposable SQLite sites under `/tmp/postmark-*`. It Composer-requires the
 published `^1.0` package, enables the module, rebuilds caches and checks
-diagnostics, then repeats from 1.0.0-alpha1 through `drush updatedb`. Do not
-point it at production. It prints no secrets.
+diagnostics, then repeats from 1.0.0-alpha1 through `drush updatedb` and
+asserts schema version 10007. Do not point it at production. It prints no
+secrets.
 
-Walked through on a disposable Drupal 11.4 / PHP 8.5 / SQLite site: published
-1.0.0-alpha2 enabled, caches rebuilt, diagnostics reported a configured secret
-without printing it; a separate 1.0.0-alpha1 site then Composer-updated to
-alpha2 and `drush updatedb` ran 10001 through 10006, leaving schema version
-10006.
+A prior walkthrough on Drupal 11.4 / PHP 8.5 / SQLite used published
+1.0.0-alpha2 and finished at schema 10006. After 1.0.0 is on the registry,
+the same script installs `^1.0` and expects 10007.
