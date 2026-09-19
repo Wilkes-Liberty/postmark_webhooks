@@ -7,6 +7,7 @@ namespace Drupal\postmark_webhooks_mcp\Plugin\tool\Tool;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\mcp_sentinel\McpPolicyProfileInterface;
 use Drupal\mcp_sentinel\Plugin\tool\Tool\McpEntityToolTrait;
 use Drupal\mcp_sentinel\Plugin\tool\Tool\McpGovernedToolBase;
 use Drupal\tool\ExecutableResult;
@@ -14,8 +15,8 @@ use Drupal\tool\ExecutableResult;
 /**
  * Shares access, rate limiting and refusal handling for the read-only tools.
  *
- * Every tool returns one fixed refusal message. Caller input, exception text,
- * mailboxes and secrets never reach a result or a log line.
+ * This module's own refusals are one fixed message. Caller input, exception
+ * text, mailboxes and secrets never reach a result or a log line.
  */
 abstract class PostmarkToolBase extends McpGovernedToolBase {
 
@@ -28,16 +29,10 @@ abstract class PostmarkToolBase extends McpGovernedToolBase {
 
   /**
    * Largest JSON result a tool returns, in bytes.
+   *
+   * The resolved profile's response-size cap applies when it is lower.
    */
   protected const MAX_RESULT_BYTES = 131072;
-
-  /**
-   * Input names this tool accepts.
-   *
-   * @return string[]
-   *   Allowed input keys.
-   */
-  abstract protected function inputNames(): array;
 
   /**
    * Runs the read against the module's own service.
@@ -100,9 +95,6 @@ abstract class PostmarkToolBase extends McpGovernedToolBase {
       if (!$this->checkAccess($values, $this->currentUser)) {
         return $this->refused();
       }
-      if (array_diff(array_keys($values), $this->inputNames())) {
-        return $this->refused();
-      }
       $profile = $this->governancePolicyResolver?->resolve($this->currentUser);
       if ($profile === NULL) {
         return $this->refused();
@@ -111,7 +103,7 @@ abstract class PostmarkToolBase extends McpGovernedToolBase {
         return $limited;
       }
       $result = $this->read($values);
-      if (strlen(json_encode($result, JSON_THROW_ON_ERROR)) > static::MAX_RESULT_BYTES) {
+      if (strlen(json_encode($result, JSON_THROW_ON_ERROR)) > $this->resultLimit($profile)) {
         return $this->refused();
       }
       return ExecutableResult::success($this->t('Postmark read completed.'), $result);
@@ -129,7 +121,17 @@ abstract class PostmarkToolBase extends McpGovernedToolBase {
   }
 
   /**
-   * The single refusal every tool returns.
+   * The smaller of this module's ceiling and the profile's response-size cap.
+   */
+  protected function resultLimit(McpPolicyProfileInterface $profile): int {
+    $cap = \Drupal::hasService('mcp_sentinel.exfiltration_guard')
+      ? (int) \Drupal::service('mcp_sentinel.exfiltration_guard')->effectiveResponseSizeCap($profile)
+      : 0;
+    return $cap > 0 ? min(static::MAX_RESULT_BYTES, $cap) : static::MAX_RESULT_BYTES;
+  }
+
+  /**
+   * The refusal this module's own code returns.
    */
   protected function refused(): ExecutableResult {
     return ExecutableResult::failure($this->t('Postmark read refused. Check permissions, inputs and limits.'));

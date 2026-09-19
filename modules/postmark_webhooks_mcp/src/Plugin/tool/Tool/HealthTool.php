@@ -39,13 +39,6 @@ final class HealthTool extends PostmarkToolBase {
   /**
    * {@inheritdoc}
    */
-  protected function inputNames(): array {
-    return [];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   protected function read(array $values): array {
     return ['health' => $this->health->evaluate()];
   }

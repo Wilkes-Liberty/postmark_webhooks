@@ -17,7 +17,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 #[Tool(
   id: 'postmark_webhooks_message_timeline',
   label: new TranslatableMarkup('Postmark message timeline'),
-  description: new TranslatableMarkup('Return retained webhook events for one exact Postmark MessageID: event type, bounce type, source and times, 25 per page. Recipients are replaced by a per-message label and a suppressed flag. Delivery is provider evidence, not proof of inbox placement.'),
+  description: new TranslatableMarkup('Return retained webhook events for one exact Postmark MessageID: event type, bounce type, source and times, 25 per page. Each recipient is replaced by a label and a suppressed flag. A label means something inside one response only and cannot be compared across pages. Delivery is provider evidence, not proof of inbox placement.'),
   operation: ToolOperation::Read,
   input_definitions: [
     'message_id' => new InputDefinition(
@@ -58,13 +58,6 @@ final class MessageTimelineTool extends PostmarkToolBase {
     $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
     $instance->timeline = $container->get('postmark_webhooks.event_timeline');
     return $instance;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function inputNames(): array {
-    return ['message_id', 'event_type', 'page'];
   }
 
   /**

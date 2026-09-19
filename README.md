@@ -559,7 +559,7 @@ governed agent can ask about this module over MCP. It depends on Tool API and
 | `postmark_webhooks_diagnostics` | Whether suppression is enabled, mail-path coverage, source profile status, intake totals |
 | `postmark_webhooks_delivery_preview` | For one address and mail path: whether this module would block the message, and the reason code |
 | `postmark_webhooks_message_timeline` | Retained events for one exact MessageID, 25 per page |
-| `postmark_webhooks_outbox_status` | Recent integration outbox rows |
+| `postmark_webhooks_outbox_status` | Recent integration outbox rows, with an error flag in place of the error text |
 | `postmark_webhooks_drift_reports` | Recent drift reports. Hidden unless `postmark_webhooks_reconcile` is installed |
 
 Every tool is read-only and bounded.
@@ -574,8 +574,11 @@ Every tool is read-only and bounded.
   (`mcp_delivery_preview`) under the same keyed hash the other operator actions
   use. The timeline replaces each recipient with a label such as `recipient_1`
   that means something only inside that response.
-- Every refusal is the same fixed message. Input values and exception text are
-  not relayed or logged.
+- A refusal from this module is one fixed message. Tool API and MCP Sentinel
+  have their own messages for invalid input, denied access and rate limits.
+  None of them relays an input value, and exception text is not logged.
+- Results are capped at 128 KiB, or at the profile's response-size cap when
+  that is lower.
 - To publish the tools over MCP, enable them in the MCP tool bridge
   configuration of your site. Installing this submodule does not publish
   anything by itself.
