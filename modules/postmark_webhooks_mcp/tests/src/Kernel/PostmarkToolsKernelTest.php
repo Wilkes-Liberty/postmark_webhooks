@@ -159,27 +159,27 @@ final class PostmarkToolsKernelTest extends KernelTestBase {
       ['email' => self::MAILBOX, 'server_id' => '123'],
       ['email' => self::MAILBOX, 'message_stream' => 'outbound-7Q'],
     ];
+    $reached = 0;
     foreach ($cases as $inputs) {
       $tool = $this->tool('postmark_webhooks_delivery_preview');
-      foreach ($inputs as $name => $value) {
-        try {
+      try {
+        foreach ($inputs as $name => $value) {
           $tool->setInputValue($name, $value);
         }
-        catch (\Throwable) {
-          // A typed-data refusal at input time is as good as one at execute.
-          continue 2;
-        }
-      }
-      try {
         $tool->execute();
       }
-      catch (\Throwable) {
+      catch (\Throwable $error) {
+        // A typed-data refusal is as good as one at execute, if it is quiet.
+        self::assertStringNotContainsString('7Q', $error->getMessage());
+        self::assertStringNotContainsString('private.person', $error->getMessage());
         continue;
       }
+      $reached++;
       self::assertFalse($tool->getResultStatus(), json_encode($inputs));
       self::assertStringNotContainsString('7Q', (string) $tool->getResultMessage());
       $this->assertNoMailbox($tool->getResult()->getContextValues(), (string) $tool->getResultMessage());
     }
+    self::assertGreaterThan(0, $reached, 'At least one case must reach the result assertions.');
     $count = (int) $this->container->get('database')->select('postmark_operator_audit', 'a')
       ->countQuery()->execute()->fetchField();
     self::assertSame(0, $count);
@@ -215,6 +215,37 @@ final class PostmarkToolsKernelTest extends KernelTestBase {
     self::assertArrayNotHasKey('message_id', $values);
     $this->assertNoMailbox($values, (string) $tool->getResultMessage());
     self::assertStringNotContainsString('should-not-surface', json_encode($values));
+  }
+
+  /**
+   * A subscriber error can quote a URL with credentials; none of it surfaces.
+   */
+  public function testOutboxHidesErrorTextAndFingerprint(): void {
+    $this->container->get('database')->insert('postmark_integration_outbox')->fields([
+      'type' => 'webhook',
+      'version' => 1,
+      'status' => 'failed',
+      'attempts' => 3,
+      'available_at' => 10,
+      'created' => 5,
+      'delivered_at' => 0,
+      'last_error' => 'POST https://crm.invalid/hook?token=SECRET-7Q&email=private.person%40example.com resulted in 401',
+      'fingerprint' => str_repeat('f', 64),
+      'payload' => '{}',
+    ])->execute();
+    $tool = $this->tool('postmark_webhooks_outbox_status');
+    $tool->execute();
+    self::assertTrue($tool->getResultStatus(), (string) $tool->getResultMessage());
+    $values = $tool->getResult()->getContextValues();
+    self::assertCount(1, $values['rows']);
+    self::assertTrue($values['rows'][0]['has_error']);
+    self::assertSame('failed', $values['rows'][0]['status']);
+    self::assertArrayNotHasKey('last_error', $values['rows'][0]);
+    self::assertArrayNotHasKey('fingerprint', $values['rows'][0]);
+    $json = json_encode($values);
+    foreach (['SECRET-7Q', 'crm.invalid', 'private.person', str_repeat('f', 64)] as $forbidden) {
+      self::assertStringNotContainsString($forbidden, $json);
+    }
   }
 
   /**

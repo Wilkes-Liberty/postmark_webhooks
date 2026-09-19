@@ -55,13 +55,6 @@ final class DriftReportsTool extends PostmarkToolBase {
   /**
    * {@inheritdoc}
    */
-  protected function inputNames(): array {
-    return ['limit'];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   protected function available(): bool {
     return $this->reconciliation !== NULL;
   }

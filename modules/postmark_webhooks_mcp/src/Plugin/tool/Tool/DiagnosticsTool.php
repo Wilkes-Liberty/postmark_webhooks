@@ -39,13 +39,6 @@ final class DiagnosticsTool extends PostmarkToolBase {
   /**
    * {@inheritdoc}
    */
-  protected function inputNames(): array {
-    return [];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   protected function read(array $values): array {
     return ['diagnostics' => $this->preview->diagnostics()];
   }

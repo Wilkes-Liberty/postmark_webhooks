@@ -88,13 +88,6 @@ final class DeliveryPreviewTool extends PostmarkToolBase {
   /**
    * {@inheritdoc}
    */
-  protected function inputNames(): array {
-    return ['email', 'mail_path', 'server_id', 'message_stream'];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   protected function read(array $values): array {
     $email = (string) ($values['email'] ?? '');
     $server = trim((string) ($values['server_id'] ?? ''));
