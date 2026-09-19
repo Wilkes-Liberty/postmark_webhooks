@@ -40,6 +40,11 @@ if not audit_block:
     manifest['config']['audit'] = {'block-insecure': False}
 if os.environ.get('MAILER_CONSTRAINT'):
     manifest['require']['drupal/symfony_mailer'] = os.environ['MAILER_CONSTRAINT']
+if os.environ.get('MCP_TOOLS', '').lower() in ('1', 'true', 'yes'):
+    # Optional postmark_webhooks_mcp submodule only. Tool API has beta
+    # releases; the suffix admits beta for that package alone.
+    manifest['require']['drupal/mcp_sentinel'] = '^2.22'
+    manifest['require']['drupal/tool'] = '^1.0.0-beta8'
 target = Path(os.environ.get('POSTMARK_CI_DIR', '/tmp/postmark-ci'))
 target.mkdir(parents=True, exist_ok=True)
 (target / 'composer.json').write_text(json.dumps(manifest))
