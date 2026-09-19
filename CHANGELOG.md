@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-19
+
 - #3624451: Stop storing subscriber exception text in the integration outbox.
   `last_error` kept the message after replacing only text shaped like
   `name@host`, so a URL, a query-string token, a header value or a URL-encoded
@@ -19,6 +21,14 @@
   delivery preview, message timeline, outbox status and drift reports. No tool
   returns a mailbox or a secret. The base module's dependencies and Drupal
   floor are unchanged; the submodule requires Drupal 10.6 or 11.3 and later.
+
+### Upgrading from 1.1.0
+
+Back up the database, `composer require drupal/postmark_webhooks:^1.2`, then
+run `drush updatedb -y` and `drush cache:rebuild`. Update 10008 rewrites stored
+outbox errors into the fixed-format summary. There is no schema change, and the
+public suppression contract is unchanged. Enable `postmark_webhooks_mcp` only
+if you use Tool API and MCP Sentinel.
 
 ## [1.1.0] - 2026-09-07
 

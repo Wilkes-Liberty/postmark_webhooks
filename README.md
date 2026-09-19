@@ -106,6 +106,14 @@ Configure suppression and retention at
 `/admin/config/services/postmark-webhook`. The required permission is
 `administer postmark webhook settings`.
 
+## Upgrading from 1.1.0
+
+Back up the database, `composer require drupal/postmark_webhooks:^1.2`, then
+run `drush updatedb -y` and `drush cache:rebuild`. Update 10008 rewrites stored
+integration outbox errors into a fixed-format summary. There is no schema
+change. Enable `postmark_webhooks_mcp` only if you use Tool API and MCP
+Sentinel.
+
 ## Upgrading from 1.0.1
 
 Back up the database, `composer require drupal/postmark_webhooks:^1.0`, then
