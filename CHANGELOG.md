@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- #3624451: Stop storing subscriber exception text in the integration outbox.
+  `last_error` kept the message after replacing only text shaped like
+  `name@host`, so a URL, a query-string token, a header value or a URL-encoded
+  mailbox stayed in the table and in `drush postmark-webhooks:outbox` output.
+  It now holds a fixed-format summary: the exception class, an HTTP status
+  when the exception exposes one, and a reason code. The exception message is
+  never read. The delivery-failure log line carries the same summary. Update
+  10008 rewrites existing values in 250-row batches, and the Drush command
+  applies the same rewrite on read until the update has run. Run
+  `drush updatedb`. `last_error` is less detailed than before; log the cause in
+  your subscriber if you need it.
+  https://www.drupal.org/project/postmark_webhooks/issues/3624451
 - #3624443: Add the optional `postmark_webhooks_mcp` submodule. It exposes six
   read-only Tool API plugins governed by MCP Sentinel: health, diagnostics,
   delivery preview, message timeline, outbox status and drift reports. No tool

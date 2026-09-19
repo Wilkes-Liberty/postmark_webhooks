@@ -165,9 +165,8 @@ class PostmarkIntegrationOutboxTest extends KernelTestBase {
     $row = $this->container->get('postmark_webhooks.integration_outbox')->inspect()[0];
     $this->assertSame('pending', $row['status']);
     $this->assertSame(1, $row['attempts']);
-    $this->assertStringNotContainsString('example.com', $row['last_error']);
-    $this->assertStringContainsString('@state', $row['last_error']);
-    $this->assertStringContainsString('[redacted]', $row['last_error']);
+    // The exception message is not stored at all, redacted or otherwise.
+    $this->assertSame('class=RuntimeException; status=none; reason=subscriber_error', $row['last_error']);
   }
 
   /**

@@ -444,7 +444,8 @@ prints the machine-readable report. This module does not send those alerts as
 mail. Opt-in post-commit integration events are in
 [docs/integration-events.md](docs/integration-events.md).
 `drush postmark-webhooks:outbox` lists inspectable delivery rows without
-recipients. `drush postmark-webhooks:outbox-dispatch` delivers one bounded
+recipients. A failed row's `last_error` is a fixed-format summary (exception
+class, HTTP status, reason code) and never the subscriber's exception message. `drush postmark-webhooks:outbox-dispatch` delivers one bounded
 page, the same tick cron uses. Quiet sites stay unknown unless you set an expected activity window.
 The counters begin at installation of update 10004; they do not reconstruct past
 traffic. Successful event storage and its accepted counter commit together.
