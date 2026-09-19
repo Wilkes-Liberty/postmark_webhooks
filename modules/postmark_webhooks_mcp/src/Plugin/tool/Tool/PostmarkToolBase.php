@@ -10,7 +10,9 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\mcp_sentinel\McpPolicyProfileInterface;
 use Drupal\mcp_sentinel\Plugin\tool\Tool\McpEntityToolTrait;
 use Drupal\mcp_sentinel\Plugin\tool\Tool\McpGovernedToolBase;
+use Drupal\mcp_sentinel\Service\McpExfiltrationGuard;
 use Drupal\tool\ExecutableResult;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Shares access, rate limiting and refusal handling for the read-only tools.
@@ -33,6 +35,22 @@ abstract class PostmarkToolBase extends McpGovernedToolBase {
    * The resolved profile's response-size cap applies when it is lower.
    */
   protected const MAX_RESULT_BYTES = 131072;
+
+  /**
+   * Sentinel's response-size resolver, when the installed version has one.
+   */
+  protected ?McpExfiltrationGuard $exfiltrationGuard = NULL;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
+    $instance->exfiltrationGuard = $container->has('mcp_sentinel.exfiltration_guard')
+      ? $container->get('mcp_sentinel.exfiltration_guard')
+      : NULL;
+    return $instance;
+  }
 
   /**
    * Runs the read against the module's own service.
@@ -124,9 +142,9 @@ abstract class PostmarkToolBase extends McpGovernedToolBase {
    * The smaller of this module's ceiling and the profile's response-size cap.
    */
   protected function resultLimit(McpPolicyProfileInterface $profile): int {
-    $cap = \Drupal::hasService('mcp_sentinel.exfiltration_guard')
-      ? (int) \Drupal::service('mcp_sentinel.exfiltration_guard')->effectiveResponseSizeCap($profile)
-      : 0;
+    $cap = $this->exfiltrationGuard === NULL
+      ? 0
+      : (int) $this->exfiltrationGuard->effectiveResponseSizeCap($profile);
     return $cap > 0 ? min(static::MAX_RESULT_BYTES, $cap) : static::MAX_RESULT_BYTES;
   }
 
