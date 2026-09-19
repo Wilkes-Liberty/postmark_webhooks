@@ -5,6 +5,7 @@
  * Install and schema hooks for the Postmark Webhooks module.
  */
 
+use Drupal\postmark_webhooks\Integration\DeliveryErrorSummary;
 use Drupal\postmark_webhooks\Suppression\SuppressionStore;
 use Drupal\Core\Database\SchemaObjectExistsException;
 use Drupal\Core\Utility\UpdateException;
@@ -376,6 +377,42 @@ function postmark_webhooks_update_10007(): void {
     throw new UpdateException('postmark_webhooks_schema() is missing postmark_integration_outbox.');
   }
   $schema->createTable('postmark_integration_outbox', $spec);
+}
+
+/**
+ * Rewrites stored integration delivery errors so they hold no request data.
+ */
+function postmark_webhooks_update_10008(array &$sandbox): void {
+  $database = \Drupal::database();
+  // No schema change: last_error keeps its hook_schema() definition.
+  if (!$database->schema()->tableExists('postmark_integration_outbox')) {
+    $sandbox['#finished'] = 1;
+    return;
+  }
+  if (!isset($sandbox['last_oid'])) {
+    $maximum = $database->select('postmark_integration_outbox');
+    $maximum->addExpression('MAX(oid)');
+    $sandbox['maximum'] = (int) $maximum->execute()->fetchField();
+    $sandbox['last_oid'] = 0;
+  }
+  $rows = $database->select('postmark_integration_outbox', 'o')->fields('o', ['oid', 'last_error'])
+    ->condition('oid', $sandbox['last_oid'], '>')->condition('oid', $sandbox['maximum'], '<=')
+    ->orderBy('oid')->range(0, 250)->execute()->fetchAllKeyed();
+  // Few distinct summaries exist, so one UPDATE per summary covers the batch.
+  $rewrites = [];
+  foreach ($rows as $oid => $stored) {
+    $summary = DeliveryErrorSummary::fromStoredText((string) $stored);
+    if ($summary !== (string) $stored) {
+      $rewrites[$summary][] = $oid;
+    }
+    $sandbox['last_oid'] = (int) $oid;
+  }
+  foreach ($rewrites as $summary => $oids) {
+    $database->update('postmark_integration_outbox')->fields(['last_error' => $summary])
+      ->condition('oid', $oids, 'IN')->execute();
+  }
+  $sandbox['#finished'] = count($rows) < 250 || $sandbox['last_oid'] >= $sandbox['maximum']
+    ? 1 : $sandbox['last_oid'] / $sandbox['maximum'];
 }
 
 /**

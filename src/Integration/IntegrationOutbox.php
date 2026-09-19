@@ -184,7 +184,9 @@ final class IntegrationOutbox {
         'available_at' => (int) $row['available_at'],
         'created' => (int) $row['created'],
         'delivered_at' => (int) $row['delivered_at'] ?: NULL,
-        'last_error' => $row['last_error'],
+        // Summarised on read as well: until update 10008 has run, a row may
+        // still hold an exception message from an older release.
+        'last_error' => DeliveryErrorSummary::fromStoredText((string) $row['last_error']),
         'fingerprint' => $row['fingerprint'],
       ];
     }
@@ -240,9 +242,9 @@ final class IntegrationOutbox {
       'status' => $terminal ? 'failed' : 'pending',
       'attempts' => $attempts,
       'available_at' => $now + ($terminal ? 0 : $this->backoff($attempts)),
-      'last_error' => $this->safeError($exception),
+      'last_error' => $summary = DeliveryErrorSummary::fromThrowable($exception),
     ])->condition('oid', $id)->execute();
-    $this->logFailure($terminal);
+    $this->logFailure($terminal, $summary);
   }
 
   /**
@@ -285,21 +287,18 @@ final class IntegrationOutbox {
   }
 
   /**
-   * Sanitizes a delivery error for storage and logs.
+   * Logs delivery failure without payload content or the exception message.
+   *
+   * @param bool $terminal
+   *   Whether the row will be retried.
+   * @param string $summary
+   *   The DeliveryErrorSummary text stored on the row.
    */
-  private function safeError(\Throwable $exception): string {
-    $message = $exception->getMessage();
-    $message = preg_replace('/[^\s]{1,64}@[\w.-]+/', '[redacted]', $message) ?? '[redacted]';
-    return mb_substr($message, 0, 255);
-  }
-
-  /**
-   * Logs delivery failure without payload content.
-   */
-  private function logFailure(bool $terminal): void {
+  private function logFailure(bool $terminal, string $summary): void {
     try {
-      $this->loggerFactory->get('postmark_webhooks')->warning('Postmark Webhooks integration delivery @state.', [
+      $this->loggerFactory->get('postmark_webhooks')->warning('Postmark Webhooks integration delivery @state: @summary.', [
         '@state' => $terminal ? 'failed' : 'retrying',
+        '@summary' => $summary,
       ]);
     }
     catch (\Throwable $exception) {

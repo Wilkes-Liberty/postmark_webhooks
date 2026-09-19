@@ -12,6 +12,11 @@ use Drupal\postmark_webhooks\Integration\IntegrationEvent;
  */
 function postmark_integration_test_postmark_webhooks_integration_event(IntegrationEvent $event): void {
   $state = \Drupal::state();
+  // A test can hand over the exact exception a subscriber would throw.
+  $factory = $state->get('postmark_integration_test.throw_factory');
+  if (is_string($factory) && is_callable($factory)) {
+    throw $factory();
+  }
   if ($state->get('postmark_integration_test.throw')) {
     throw new \RuntimeException(
       'Synthetic delivery failure at @state for recipient0@example.com.',

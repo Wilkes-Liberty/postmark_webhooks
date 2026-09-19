@@ -80,9 +80,9 @@ submodule's update 10001 for drift-report storage.
 
 ## Upgrading from 1.0.0-alpha1
 
-Alpha1 sites must run every `hook_update_N` through 10007. Schema-only updates
-are idempotent. Batched updates 10002 and 10006 process 250 rows per batch and
-resume from the last processed event id.
+Alpha1 sites must run every `hook_update_N` through 10008. Schema-only updates
+are idempotent. Batched updates 10002, 10006 and 10008 process 250 rows per
+batch and resume from the last processed row id.
 
 ```sh
 composer require drupal/postmark_webhooks:^1.0
@@ -103,6 +103,7 @@ schema onto old code.
 | 10005 | Creates the operator audit table. |
 | 10006 | Clears legacy `description` text and `payload` bodies in 250-row batches. Normalized history and suppression stay. |
 | 10007 | Creates the empty integration outbox table used when integration events are enabled. |
+| 10008 | Rewrites stored integration delivery errors (`last_error`) to a fixed-format summary in 250-row batches. No schema change. Does nothing when the outbox table is absent. |
 
 History already discarded by alpha1 retention cannot be reconstructed locally.
 A replay of a legacy event can add one new keyed row because alpha1 did not keep
