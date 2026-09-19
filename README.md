@@ -545,6 +545,45 @@ not clear local consent, complaint or suppression evidence.
 API references: [suppression dump](https://postmarkapp.com/developer/api/suppressions-api)
 and [server identity](https://postmarkapp.com/developer/api/server-api).
 
+## Optional MCP tools
+
+`postmark_webhooks_mcp` exposes read-only
+[Tool API](https://www.drupal.org/project/tool) plugins so an operator or a
+governed agent can ask about this module over MCP. It depends on Tool API and
+[MCP Sentinel](https://www.drupal.org/project/mcp_sentinel) and requires Drupal
+10.6 or 11.3 and later. The base module does not depend on either.
+
+| Tool | Returns |
+| --- | --- |
+| `postmark_webhooks_health` | The health report: secret and rotation state, intake silence, retention backlog, source checks |
+| `postmark_webhooks_diagnostics` | Whether suppression is enabled, mail-path coverage, source profile status, intake totals |
+| `postmark_webhooks_delivery_preview` | For one address and mail path: whether this module would block the message, and the reason code |
+| `postmark_webhooks_message_timeline` | Retained events for one exact MessageID, 25 per page |
+| `postmark_webhooks_outbox_status` | Recent integration outbox rows |
+| `postmark_webhooks_drift_reports` | Recent drift reports. Hidden unless `postmark_webhooks_reconcile` is installed |
+
+Every tool is read-only and bounded.
+
+- Grant `use postmark webhooks mcp tools` to the role your MCP credential
+  uses. It is a restricted permission. The timeline tool also requires
+  `view postmark suppression`.
+- MCP Sentinel's gates apply first: permission, source readiness, scope, IP
+  policy and rate limit. A tool is listed only for an account that can run it.
+- No tool returns a mailbox or a secret. The delivery preview takes an address
+  as input, never returns it, and writes an operator audit row
+  (`mcp_delivery_preview`) under the same keyed hash the other operator actions
+  use. The timeline replaces each recipient with a label such as `recipient_1`
+  that means something only inside that response.
+- Every refusal is the same fixed message. Input values and exception text are
+  not relayed or logged.
+- To publish the tools over MCP, enable them in the MCP tool bridge
+  configuration of your site. Installing this submodule does not publish
+  anything by itself.
+
+Not available as tools, by design: hard-bounce recovery, recipient export and
+erasure, reconciliation apply, outbox dispatch and replay, retention drain, and
+anything that touches webhook credentials. Those stay human-confirmed.
+
 ## Known limitations
 
 - Native Mailer Plus sending requires the optional `postmark_webhooks_mailer`

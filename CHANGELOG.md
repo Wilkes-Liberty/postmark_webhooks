@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- #3624443: Add the optional `postmark_webhooks_mcp` submodule. It exposes six
+  read-only Tool API plugins governed by MCP Sentinel: health, diagnostics,
+  delivery preview, message timeline, outbox status and drift reports. No tool
+  returns a mailbox or a secret. The base module's dependencies and Drupal
+  floor are unchanged; the submodule requires Drupal 10.6 or 11.3 and later.
+
 ## [1.1.0] - 2026-09-07
 
 - #3621495: Dual-write operator audits to audit_chain when it is installed.

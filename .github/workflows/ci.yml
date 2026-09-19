@@ -187,6 +187,71 @@ jobs:
           fi
           python3 "$GITHUB_WORKSPACE/tests/fixtures/subdirectory-http.py" /tmp/postmark-ci http://127.0.0.1:8890
 
+  # Optional postmark_webhooks_mcp submodule (#3624443). Tool API and MCP
+  # Sentinel support Drupal 10.6 and 11.3 and later, so the 10.3 floor job
+  # above never installs them and the base module keeps its floor.
+  mcp:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mcp-d10.6-php8.3
+            drupal: '10.6.*'
+            php: '8.3'
+          - name: mcp-d11.3-php8.3
+            drupal: '11.3.*'
+            php: '8.3'
+          - name: mcp-d11.4-php8.5
+            drupal: '11.4.*'
+            php: '8.5'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: drupal
+          POSTGRES_PASSWORD: drupal
+          POSTGRES_DB: drupal
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SIMPLETEST_DB: pgsql://drupal:drupal@127.0.0.1:5432/drupal
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_pgsql, gd
+          tools: composer:v2
+          coverage: none
+      - name: Create fixture with Tool API and MCP Sentinel
+        env:
+          DRUPAL_CONSTRAINT: ${{ matrix.drupal }}
+          MCP_TOOLS: '1'
+        run: |
+          python3 "$GITHUB_WORKSPACE/tests/fixtures/create-ci-fixture.py"
+          composer install --working-dir=/tmp/postmark-ci --no-interaction --no-progress
+          mkdir -p /tmp/postmark-ci/web/modules/contrib
+          ln -s "$GITHUB_WORKSPACE" /tmp/postmark-ci/web/modules/contrib/postmark_webhooks
+      - name: Record resolved versions
+        working-directory: /tmp/postmark-ci
+        run: |
+          composer show --no-ansi drupal/core | sed -n '1,4p'
+          composer show --no-ansi drupal/mcp_sentinel | sed -n '1,4p'
+          composer show --no-ansi drupal/tool | sed -n '1,4p'
+      - name: Optional MCP tools kernel tests
+        working-directory: /tmp/postmark-ci
+        run: |
+          vendor/bin/phpunit -c web/core --log-junit /tmp/junit-mcp.xml \
+            web/modules/contrib/postmark_webhooks/modules/postmark_webhooks_mcp/tests
+          collected="$(grep -o '<testcase ' /tmp/junit-mcp.xml | wc -l | tr -d ' ')"
+          test "$collected" -ge 9 || { echo "::error::Expected at least 9 MCP tool tests, collected ${collected}"; exit 1; }
+
   # Risk-based driver coverage for #3621226. PostgreSQL remains the 9-job
   # kernel matrix above. These jobs run the same suite, including upgrades,
   # concurrent intake, privacy, retention and query-plan assertions.

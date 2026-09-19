@@ -1,0 +1,4 @@
+use postmark webhooks mcp tools:
+  title: 'Use Postmark Webhooks MCP tools'
+  description: 'Read health, diagnostics, delivery previews, outbox status and drift reports through governed MCP tools. The message timeline tool also requires the suppression view permission.'
+  restrict access: true
