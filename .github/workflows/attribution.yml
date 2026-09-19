@@ -1,0 +1,40 @@
+name: Attribution
+
+# Thin caller for the shared attribution check. The implementation — strip
+# AI-credit trailers from PR commits, then fail if any attribution credit
+# remains in commits, identities, title or body — lives in
+# Wilkes-Liberty/shared-ci, one copy for every repository, pinned to a tag so
+# upgrades are deliberate. Do not add logic here: anything this file does
+# beyond calling the shared workflow is drift, which is what the shared
+# repository exists to end.
+
+on:
+  pull_request:
+    # `edited` is load-bearing and NOT in the default set: the check scans the
+    # PR title and body, and both are editable after the check has gone green.
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: write        # strip force-pushes the cleaned PR branch
+  pull-requests: write   # courtesy comment when trailers were stripped
+
+concurrency:
+  # LOAD-BEARING here, not decoration: a called workflow's own concurrency
+  # does not apply to this run, so this block is the only thing keeping a
+  # superseded duplicate run from cancelling a live one. The head SHA keeps
+  # the post-strip re-run out of this group, and the `-caller` suffix keeps
+  # this group apart from the ruleset-required flavor of the same check.
+  # Do not simplify this key.
+  group: attribution-${{ github.repository }}-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}-caller
+  # FALSE on purpose (Wilkes-Liberty/shared-ci#2): a cancelled duplicate of the
+  # required-class attribution check wears a red X until someone re-runs it.
+  # Duplicate deliveries queue and both finish green instead.
+  cancel-in-progress: false
+  # max, not the single-slot default: with `queue: single` a third delivery in
+  # the same group evicts the pending run as cancelled — the same red X by
+  # another door. `queue: max` is only valid alongside cancel-in-progress: false.
+  queue: max
+
+jobs:
+  attribution:
+    uses: Wilkes-Liberty/shared-ci/.github/workflows/attribution.yml@v1
