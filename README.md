@@ -15,7 +15,7 @@ restore-based rollback are in
 ## Installation and configuration
 
 ```sh
-composer require drupal/postmark_webhooks:^1.0
+composer require drupal/postmark_webhooks:^1.2
 drush en postmark_webhooks
 ```
 

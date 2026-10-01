@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-01
+
+- Documentation-only changes skip the full CI matrix. A change to the
+  workflow file still runs the full matrix.
+
 ## [1.2.0] - 2026-09-19
 
 - #3624451: Stop storing subscriber exception text in the integration outbox.
