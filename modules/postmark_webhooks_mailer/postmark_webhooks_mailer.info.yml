@@ -2,7 +2,9 @@ name: Postmark Webhooks Mailer adapter
 type: module
 description: Applies Postmark suppression before Mailer Plus transport.
 package: Chronicle
-core_version_requirement: ^10.3 || ^11
+# Mailer Plus (symfony_mailer) still declares ^10.3 || ^11, so this adapter
+# cannot claim Drupal 12.
+core_version_requirement: ^10.6 || ^11.3
 dependencies:
   - postmark_webhooks:postmark_webhooks
   - symfony_mailer:symfony_mailer

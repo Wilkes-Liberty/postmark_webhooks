@@ -44,14 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Advertised composer floor. Drupal 10.3 is past upstream security
-          # support; keep the job isolated and do not treat it as a current
-          # platform claim.
-          - name: d10.3-php8.3-floor
-            drupal: '10.3.*'
-            php: '8.3'
-            mailer: ''
-            audit: false
+          # Advertised composer floor: Drupal 10.6 / PHP 8.3.
           - name: d10.6-php8.3
             drupal: '10.6.*'
             php: '8.3'
@@ -216,8 +209,8 @@ jobs:
           python3 "$GITHUB_WORKSPACE/tests/fixtures/subdirectory-http.py" /tmp/postmark-ci http://127.0.0.1:8890
 
   # Optional postmark_webhooks_mcp submodule (#3624443). Tool API and MCP
-  # Sentinel support Drupal 10.6 and 11.3 and later, so the 10.3 floor job
-  # above never installs them and the base module keeps its floor.
+  # Sentinel support Drupal 10.6 and 11.3 and later, and neither declares
+  # Drupal 12, so these jobs stay on the supported MCP range.
   mcp:
     name: ${{ matrix.name }}
     needs: changes

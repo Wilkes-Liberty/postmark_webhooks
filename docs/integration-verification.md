@@ -23,7 +23,6 @@ for each run, not from this file.
 
 | Job | Drupal | PHP | Mailer Plus | Audit |
 | --- | --- | --- | --- | --- |
-| d10.3-php8.3-floor | 10.3.* | 8.3 | none | isolated exception |
 | d10.6-php8.3 | 10.6.* | 8.3 | none | yes |
 | d10.6-php8.3-mailer-1.6 | 10.6.* | 8.3 | 1.6.2 | yes |
 | d10.6-php8.4-mailer-2.0 | 10.6.* | 8.4 | 2.0.2 | yes |
@@ -38,14 +37,10 @@ Mailer Plus 1.6.2 and 2.0.2 both declare Drupal `^10.3 || ^11`. 1.6.2 is the lat
 both lines on the oldest live Drupal 10 branch and on current Drupal 11.4, and
 runs 2.x on 11.3. It is not a full Drupal × PHP × mailer Cartesian product.
 
-### Advertised Drupal 10.3 floor
-
-`composer.json` and `core_version_requirement` still allow Drupal 10.3. That
-branch is past upstream security support. One isolated job (`d10.3-php8.3-floor`)
-keeps the advertised floor from becoming an unchecked claim. That job sets
-`audit.block-insecure: false` so Composer can install the old minor; the
-exception applies only to this disposable fixture and is not a supported-branch
-waiver.
+The advertised range is `^10.6 || ^11.3 || ^12`. Drupal 10.3 is past upstream
+security support and is no longer a claimed floor. There is no GitHub Drupal 12
+job: 12 is still a moving target, and Mailer Plus and MCP Sentinel have not
+declared it. The Drupal.org GitLab pipeline exposes next-major as a manual job.
 
 ## Fixture contents
 

@@ -2,6 +2,9 @@ name: Postmark Webhooks MCP
 type: module
 description: 'Optional read-only Tool API plugins for health, diagnostics, delivery preview, message timeline, outbox and drift reports, governed by MCP Sentinel.'
 package: Mail
+# Postmark Webhooks declares ^10.6 || ^11.3 || ^12. MCP Sentinel does not
+# declare Drupal 12 yet, and Tool API is ^10.5 || ^11, so this submodule
+# cannot either.
 core_version_requirement: ^10.6 || ^11.3
 dependencies:
   - postmark_webhooks:postmark_webhooks
