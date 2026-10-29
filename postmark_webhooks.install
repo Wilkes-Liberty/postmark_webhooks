@@ -5,10 +5,13 @@
  * Install and schema hooks for the Postmark Webhooks module.
  */
 
+use Drupal\Component\Utility\DeprecationHelper;
+use Drupal\Core\Database\SchemaObjectExistsException;
+use Drupal\Core\Extension\Requirement\RequirementSeverity;
+use Drupal\Core\Hook\Attribute\LegacyRequirementsHook;
+use Drupal\Core\Utility\UpdateException;
 use Drupal\postmark_webhooks\Integration\DeliveryErrorSummary;
 use Drupal\postmark_webhooks\Suppression\SuppressionStore;
-use Drupal\Core\Database\SchemaObjectExistsException;
-use Drupal\Core\Utility\UpdateException;
 
 /**
  * Implements hook_schema().
@@ -417,12 +420,18 @@ function postmark_webhooks_update_10008(array &$sandbox): void {
 
 /**
  * Implements hook_requirements().
+ *
+ * Drupal 12 still collects this hook. hook_requirements() is deprecated in
+ * 11.3 and removed in 13; LegacyRequirementsHook keeps 11.3 quiet. The
+ * REQUIREMENT_* constants are removed in 12, so severities go through
+ * _postmark_webhooks_requirement_severities().
  */
-#[\Drupal\Core\Hook\Attribute\LegacyRequirementsHook]
+#[LegacyRequirementsHook]
 function postmark_webhooks_requirements($phase): array {
   if ($phase !== 'runtime') {
     return [];
   }
+  $map = _postmark_webhooks_requirement_severities();
   $requirements = [];
   try {
     $report = \Drupal::service('postmark_webhooks.health')->evaluate();
@@ -432,17 +441,11 @@ function postmark_webhooks_requirements($phase): array {
       'postmark_webhooks_health' => [
         'title' => t('Postmark Webhooks'),
         'value' => 'error',
-        'severity' => REQUIREMENT_ERROR,
+        'severity' => $map['error'],
         'description' => t('Health evaluation could not run. Database updates may still be pending.'),
       ],
     ];
   }
-  $map = [
-    'ok' => REQUIREMENT_OK,
-    'unknown' => REQUIREMENT_INFO,
-    'warning' => REQUIREMENT_WARNING,
-    'error' => REQUIREMENT_ERROR,
-  ];
   $requirements['postmark_webhooks_health'] = [
     'title' => t('Postmark Webhooks'),
     'value' => $report['severity'],
@@ -458,4 +461,33 @@ function postmark_webhooks_requirements($phase): array {
     ];
   }
   return $requirements;
+}
+
+/**
+ * Status-report severities that work on Drupal 10.6, 11.3 and 12.
+ *
+ * Drupal 12 removes REQUIREMENT_*. RequirementSeverity exists from 11.2.
+ * Drupal 10.6 still needs the constants. The 11.2 callback is not invoked
+ * on 10.6, so PHP does not autoload the enum there.
+ *
+ * @return array
+ *   Map of health severity keys to status-report severity values.
+ */
+function _postmark_webhooks_requirement_severities(): array {
+  return DeprecationHelper::backwardsCompatibleCall(
+    \Drupal::VERSION,
+    '11.2.0',
+    static fn (): array => [
+      'ok' => RequirementSeverity::OK,
+      'unknown' => RequirementSeverity::Info,
+      'warning' => RequirementSeverity::Warning,
+      'error' => RequirementSeverity::Error,
+    ],
+    static fn (): array => [
+      'ok' => REQUIREMENT_OK,
+      'unknown' => REQUIREMENT_INFO,
+      'warning' => REQUIREMENT_WARNING,
+      'error' => REQUIREMENT_ERROR,
+    ],
+  );
 }

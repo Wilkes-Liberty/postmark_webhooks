@@ -5,7 +5,7 @@ Drupal mail to addresses that bounced or complained. This module does not send
 mail. Pair it with [Postmark](https://www.drupal.org/project/postmark) or another
 mail backend that uses Drupal's mail manager.
 
-Requires PHP 8.3 or later and Drupal 10.3 or 11. The module appears in the
+Requires PHP 8.3 or later and Drupal 10.6, 11.3, or 12. The module appears in the
 **Chronicle** package group on the Extend page.
 
 Installation, alpha1 and alpha2 upgrades, interruption recovery and
@@ -560,7 +560,9 @@ and [server identity](https://postmarkapp.com/developer/api/server-api).
 [Tool API](https://www.drupal.org/project/tool) plugins so an operator or a
 governed agent can ask about this module over MCP. It depends on Tool API and
 [MCP Sentinel](https://www.drupal.org/project/mcp_sentinel) and requires Drupal
-10.6 or 11.3 and later. The base module does not depend on either.
+10.6 or 11.3 and later; it does not declare Drupal 12 because MCP Sentinel
+has not declared it and Tool API is `^10.5 || ^11`. The base module does not
+depend on either.
 
 | Tool | Returns |
 | --- | --- |
@@ -626,9 +628,9 @@ SIMPLETEST_BASE_URL=http://127.0.0.1:8888 SIMPLETEST_DB=pgsql://user:password@lo
 
 For HTTP tests, start a disposable site server from the Drupal web root with
 `PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8888 -t . .ht.router.php`. CI runs
-this server and the full suite on Drupal 10.6, 11.3 and 11.4 with PostgreSQL 16,
-plus an isolated Drupal 10.3 compatibility-floor job. MySQL 8.4, MariaDB 10.11
-and SQLite run the same suite on Drupal 10.6/PHP 8.3 and Drupal 11.4/PHP 8.5.
+this server and the full suite on Drupal 10.6, 11.3 and 11.4 with PostgreSQL 16.
+MySQL 8.4, MariaDB 10.11 and SQLite run the same suite on Drupal 10.6/PHP 8.3
+and Drupal 11.4/PHP 8.5.
 See [docs/integration-verification.md](docs/integration-verification.md),
 [docs/accessibility-verification.md](docs/accessibility-verification.md),
 [docs/database-verification.md](docs/database-verification.md),

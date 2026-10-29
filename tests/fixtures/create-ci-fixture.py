@@ -35,8 +35,8 @@ manifest = {
     },
 }
 if not audit_block:
-    # Isolated Drupal 10.3 floor job only. Supported-branch jobs keep
-    # Composer's default insecure-package block.
+    # Kept for disposable fixtures that must install an insecure core
+    # minor. Supported-branch jobs keep Composer's default block.
     manifest['config']['audit'] = {'block-insecure': False}
 if os.environ.get('MAILER_CONSTRAINT'):
     manifest['require']['drupal/symfony_mailer'] = os.environ['MAILER_CONSTRAINT']

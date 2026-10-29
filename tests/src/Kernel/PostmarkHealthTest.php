@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\postmark_webhooks\Kernel;
 
+use Drupal\Core\Extension\Requirement\RequirementSeverity;
 use Drupal\Core\Site\Settings;
 use Drupal\KernelTests\KernelTestBase;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
@@ -142,6 +143,27 @@ class PostmarkHealthTest extends KernelTestBase {
     $failed = $this->container->get('postmark_webhooks.health_alerts')->notify(1_700_000_400);
     $this->assertSame('alert', $failed['event']);
     $this->assertSame('warning', $this->container->get('postmark_webhooks.health')->evaluate(1_700_000_400)['severity']);
+  }
+
+  /**
+   * The status report uses RequirementSeverity on 11.2+ and integers on 10.6.
+   *
+   * Drupal 12 removes REQUIREMENT_*. This fails if the hook still names those
+   * constants, or if a severity is neither the enum nor an int.
+   */
+  public function testStatusReportUsesCurrentSeverityType(): void {
+    $loaded = $this->container->get('module_handler')->loadInclude('postmark_webhooks', 'install');
+    $this->assertNotFalse($loaded);
+    $requirements = postmark_webhooks_requirements('runtime');
+    $this->assertArrayHasKey('postmark_webhooks_health', $requirements);
+    $severity = $requirements['postmark_webhooks_health']['severity'];
+    if (enum_exists(RequirementSeverity::class)) {
+      $this->assertInstanceOf(RequirementSeverity::class, $severity);
+    }
+    else {
+      $this->assertIsInt($severity);
+    }
+    $this->assertSame([], postmark_webhooks_requirements('install'));
   }
 
   /**

@@ -3,6 +3,6 @@ description: Captures health alerts and optional provider status for kernel test
 package: Testing
 type: module
 hidden: true
-core_version_requirement: ^10.3 || ^11
+core_version_requirement: ^10.6 || ^11.3 || ^12
 dependencies:
   - postmark_webhooks:postmark_webhooks
