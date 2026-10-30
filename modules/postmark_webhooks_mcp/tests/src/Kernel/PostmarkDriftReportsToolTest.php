@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Drupal\Tests\postmark_webhooks_mcp\Kernel;
 
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\mcp_sentinel\Plugin\tool\Tool\McpGovernedToolBase;
 use Drupal\Tests\user\Traits\UserCreationTrait;
+use Drupal\tool\Tool\ToolBase;
 use Drupal\user\Entity\Role;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
@@ -38,6 +40,12 @@ final class PostmarkDriftReportsToolTest extends KernelTestBase {
    * {@inheritdoc}
    */
   protected function setUp(): void {
+    // Tool API and MCP Sentinel are optional. drupal.org CI does not install
+    // them, so these tests skip there; the GitHub workflow installs both and
+    // runs them.
+    if (!class_exists(ToolBase::class) || !class_exists(McpGovernedToolBase::class)) {
+      $this->markTestSkipped('Tool API and MCP Sentinel are not installed.');
+    }
     parent::setUp();
     $this->installSchema('audit_chain', ['audit_chain_log', 'audit_chain_mutex']);
     $this->container->get('database')->insert('audit_chain_mutex')
