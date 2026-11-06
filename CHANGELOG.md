@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-06
+
+### Tests
+- `CoreVersionRequirementTest` reads the module `composer.json` from the drupal.org project mount, where the 1.3.0 pipeline read the expanded project file and got a null constraint. The `postmark_webhooks_mcp` kernel tests skip when Tool API and MCP Sentinel are not installed, as on drupal.org CI; the GitHub workflow installs both and still runs them.
+
 ## [1.3.0] - 2026-10-29
 
 ### Changed
